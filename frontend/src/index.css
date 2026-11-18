@@ -42,3 +42,53 @@ button {
 .erro {
   color: #b00020;
 }
+
+.formulario {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.formulario input[name='descricao'] {
+  flex: 1 1 200px;
+}
+
+.formulario input[name='valor'] {
+  width: 110px;
+}
+
+select {
+  font: inherit;
+  padding: 6px 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 8px 6px;
+  border-bottom: 1px solid #ddd;
+}
+
+.valor {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.acoes {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.receita {
+  color: #1b7f3b;
+}
+
+.despesa {
+  color: #b00020;
+}

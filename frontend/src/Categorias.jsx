@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 
-function Categorias() {
+function Categorias({ aoAlterar }) {
   const [categorias, setCategorias] = useState([])
   const [novoNome, setNovoNome] = useState('')
   const [editandoId, setEditandoId] = useState(null)
@@ -28,6 +28,7 @@ function Categorias() {
     try {
       await acao()
       await carregar()
+      aoAlterar()
       return true
     } catch (e) {
       setErro(e.message)
