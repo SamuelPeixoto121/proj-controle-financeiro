@@ -127,6 +127,19 @@ app.MapDelete("/transacoes/{id}", async (int id, AppDbContext db) =>
     return Results.NoContent();
 });
 
+// Saldo
+app.MapGet("/saldo", async (AppDbContext db) =>
+{
+    var receitas = await db.Transacoes
+        .Where(t => t.Tipo == TipoTransacao.Receita)
+        .SumAsync(t => t.Valor);
+    var despesas = await db.Transacoes
+        .Where(t => t.Tipo == TipoTransacao.Despesa)
+        .SumAsync(t => t.Valor);
+
+    return new { receitas, despesas, saldo = receitas - despesas };
+});
+
 app.Run();
 
 static async Task<string?> ValidarTransacao(Transacao entrada, AppDbContext db)
