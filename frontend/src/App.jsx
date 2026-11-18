@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-
-const API_URL = 'http://localhost:5083'
+import { api } from './api.js'
+import Categorias from './Categorias.jsx'
 
 const formatarReais = (valor) =>
   valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -10,10 +10,9 @@ function App() {
   const [erro, setErro] = useState('')
 
   useEffect(() => {
-    fetch(`${API_URL}/saldo`)
-      .then((resposta) => resposta.json())
+    api('/saldo')
       .then(setSaldo)
-      .catch(() => setErro('Não foi possível conectar à API. Ela está rodando?'))
+      .catch((e) => setErro(e.message))
   }, [])
 
   return (
@@ -32,6 +31,8 @@ function App() {
           </li>
         </ul>
       )}
+
+      <Categorias />
     </main>
   )
 }

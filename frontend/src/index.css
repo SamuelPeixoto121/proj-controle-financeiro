@@ -11,9 +11,32 @@ main {
   padding: 24px 16px;
 }
 
-.resumo {
+.resumo,
+.lista {
   list-style: none;
   padding: 0;
+}
+
+.lista li {
+  padding: 8px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.linha {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.linha span,
+.linha input {
+  flex: 1;
+}
+
+input,
+button {
+  font: inherit;
+  padding: 6px 10px;
 }
 
 .erro {
