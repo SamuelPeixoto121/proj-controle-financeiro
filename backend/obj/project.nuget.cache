@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "dgSpecHash": "5yKFmoAI37I=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\INTEL\\projetos_pessoais\\proj-controle-financeiro\\backend\\ControleFinanceiro.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\INTEL\\.nuget\\packages\\microsoft.aspnetcore.openapi\\11.0.0\\microsoft.aspnetcore.openapi.11.0.0.nupkg.sha512",
+    "C:\\Users\\INTEL\\.nuget\\packages\\microsoft.extensions.apidescription.server\\11.0.0\\microsoft.extensions.apidescription.server.11.0.0.nupkg.sha512",
+    "C:\\Users\\INTEL\\.nuget\\packages\\microsoft.openapi\\3.11.0\\microsoft.openapi.3.11.0.nupkg.sha512",
+    "C:\\Users\\INTEL\\.nuget\\packages\\swashbuckle.aspnetcore\\11.0.1\\swashbuckle.aspnetcore.11.0.1.nupkg.sha512",
+    "C:\\Users\\INTEL\\.nuget\\packages\\swashbuckle.aspnetcore.swagger\\11.0.1\\swashbuckle.aspnetcore.swagger.11.0.1.nupkg.sha512",
+    "C:\\Users\\INTEL\\.nuget\\packages\\swashbuckle.aspnetcore.swaggergen\\11.0.1\\swashbuckle.aspnetcore.swaggergen.11.0.1.nupkg.sha512",
+    "C:\\Users\\INTEL\\.nuget\\packages\\swashbuckle.aspnetcore.swaggerui\\11.0.1\\swashbuckle.aspnetcore.swaggerui.11.0.1.nupkg.sha512"
+  ],
+  "logs": []
+}

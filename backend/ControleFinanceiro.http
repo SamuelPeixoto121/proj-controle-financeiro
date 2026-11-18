@@ -1,0 +1,11 @@
+@ControleFinanceiro_HostAddress = http://localhost:5083
+
+GET {{ControleFinanceiro_HostAddress}}/openapi/v1.json
+Accept: application/json
+
+###
+
+GET {{ControleFinanceiro_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
