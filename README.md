@@ -1,0 +1,130 @@
+# Controle Financeiro
+
+Controle financeiro pessoal: cadastro de receitas e despesas, organização por categorias e saldo total.
+
+## Funcionalidades
+
+- Cadastrar, editar e excluir **transações** (receitas e despesas), com descrição, valor, data e categoria
+- Cadastrar, renomear e excluir **categorias** (não é possível excluir uma categoria que tenha transações)
+- **Saldo total**: soma das receitas, soma das despesas e saldo (receitas − despesas), atualizado a cada alteração
+
+## Tecnologias
+
+| Parte | Tecnologias |
+|---|---|
+| Back-end | ASP.NET Core (.NET 11) com Minimal APIs, Swagger |
+| Banco de dados | MySQL 8, Entity Framework Core 9 com Pomelo.EntityFrameworkCore.MySql |
+| Front-end | React 19 com Vite, em JavaScript |
+
+> O EF Core está na versão 9 porque o Pomelo (provedor do MySQL) ainda não tem versão para o EF Core 10/11. O EF Core 9 funciona normalmente no .NET 11.
+
+## Pré-requisitos
+
+- [.NET SDK 11](https://dotnet.microsoft.com/download)
+- [Node.js](https://nodejs.org/) 20.19 ou superior (ou 22.12+)
+- MySQL Server 8 (o MySQL Workbench é opcional, só para visualizar os dados)
+- Ferramenta de migrations do Entity Framework, na mesma versão do EF Core do projeto:
+
+```powershell
+dotnet tool install --global dotnet-ef --version 9.0.23
+```
+
+## Como rodar
+
+Os comandos abaixo são para o PowerShell, no Windows.
+
+### 1. Clonar o repositório
+
+```powershell
+git clone https://github.com/SamuelPeixoto121/proj-controle-financeiro.git
+cd proj-controle-financeiro
+```
+
+### 2. Configurar a conexão com o banco
+
+A senha do MySQL **não fica no repositório**. Ela é guardada com os User Secrets do .NET, fora da pasta do projeto. Troque `SUA_SENHA` (e o `User`, se não usar o `root`):
+
+```powershell
+cd backend
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost;Port=3306;Database=controle_financeiro;User=root;Password=SUA_SENHA"
+```
+
+### 3. Criar o banco e as tabelas
+
+Ainda na pasta `backend`:
+
+```powershell
+dotnet ef database update
+```
+
+Esse comando cria o banco `controle_financeiro` (se ainda não existir) e as tabelas `Categorias` e `Transacoes`.
+
+### 4. Rodar a API
+
+Ainda na pasta `backend`:
+
+```powershell
+dotnet run
+```
+
+A API sobe em **http://localhost:5083**. A documentação interativa (Swagger) fica em **http://localhost:5083/swagger**.
+
+### 5. Rodar o front-end
+
+Em **outro terminal**, a partir da raiz do projeto:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Abra **http://localhost:5173** no navegador. A API precisa estar rodando ao mesmo tempo.
+
+## Rotas da API
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/categorias` | Lista as categorias |
+| GET | `/categorias/{id}` | Busca uma categoria |
+| POST | `/categorias` | Cria uma categoria |
+| PUT | `/categorias/{id}` | Renomeia uma categoria |
+| DELETE | `/categorias/{id}` | Exclui uma categoria (409 se tiver transações) |
+| GET | `/transacoes` | Lista as transações, da mais recente para a mais antiga |
+| GET | `/transacoes/{id}` | Busca uma transação |
+| POST | `/transacoes` | Cria uma transação |
+| PUT | `/transacoes/{id}` | Edita uma transação |
+| DELETE | `/transacoes/{id}` | Exclui uma transação |
+| GET | `/saldo` | Total de receitas, total de despesas e saldo |
+
+Exemplo de corpo para criar uma transação:
+
+```json
+{
+  "descricao": "Salário",
+  "valor": 3500.50,
+  "data": "2026-11-05",
+  "tipo": "Receita",
+  "categoriaId": 1
+}
+```
+
+O campo `tipo` aceita `"Receita"` ou `"Despesa"`. O `valor` é sempre positivo: é o tipo que define se o dinheiro entra ou sai.
+
+## Estrutura de pastas
+
+```
+proj-controle-financeiro/
+├── backend/                 API em ASP.NET Core
+│   ├── Data/                AppDbContext (configuração do banco)
+│   ├── Migrations/          Migrations do Entity Framework
+│   ├── Models/              Categoria, Transacao e TipoTransacao
+│   └── Program.cs           Configuração da API e todas as rotas
+└── frontend/                Front-end em React
+    └── src/
+        ├── api.js           Função que chama a API e trata os erros
+        ├── formatar.js      Formatação de valores (R$) e datas
+        ├── App.jsx          Página principal e saldo
+        ├── Transacoes.jsx   Tela de transações
+        └── Categorias.jsx   Tela de categorias
+```
