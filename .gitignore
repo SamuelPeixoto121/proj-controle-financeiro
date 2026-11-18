@@ -1,0 +1,13 @@
+# Arquivos gerados pelo .NET
+bin/
+obj/
+**/bin/
+**/obj/
+
+# Configurações locais do Visual Studio e VS Code
+.vs/
+.vscode/
+
+# Dependências e build do React
+node_modules/
+frontend/dist/
