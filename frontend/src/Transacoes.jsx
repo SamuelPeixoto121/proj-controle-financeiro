@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
+import { baixarArquivo, gerarCsv } from './csv.js'
 import { formatarData, formatarReais, hoje, normalizar } from './formatar.js'
 
 const formularioVazio = () => ({
@@ -41,6 +42,11 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
   const filtrando = busca || filtroCategoria || filtroTipo
   const somar = (tipo) =>
     filtradas.filter((t) => t.tipo === tipo).reduce((soma, t) => soma + t.valor, 0)
+
+  // Baixa o que está na tabela agora (mês + filtros).
+  function exportar() {
+    baixarArquivo(`transacoes-${mes || 'todos-os-meses'}.csv`, gerarCsv(filtradas))
+  }
 
   function limparFiltros() {
     setBusca('')
@@ -225,7 +231,10 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
             <p className="totais-filtro">
               {filtradas.length} {filtradas.length === 1 ? 'transação' : 'transações'} · Receitas{' '}
               <span className="receita">{formatarReais(somar('Receita'))}</span> · Despesas{' '}
-              <span className="despesa">{formatarReais(somar('Despesa'))}</span>
+              <span className="despesa">{formatarReais(somar('Despesa'))}</span>{' '}
+              <button type="button" onClick={exportar}>
+                Exportar CSV
+              </button>
             </p>
           )}
         </>

@@ -10,6 +10,7 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 - **Saldo total**: soma das receitas, soma das despesas e saldo (receitas − despesas), atualizado a cada alteração
 - **Filtro por mês**: ver as transações e o saldo de um mês específico, ou de todos os meses
 - **Busca e filtros na lista de transações**: por descrição (sem diferenciar maiúsculas e acentos), categoria e tipo, com a soma do que está filtrado
+- **Exportar para CSV**: baixa as transações que estão na tabela (respeitando o mês e os filtros), num formato que o Excel em português abre direto
 - **Gráfico de despesas por categoria**: barras da maior para a menor despesa, com valor e porcentagem
 - **Resumo mês a mês**: receitas e despesas de cada mês do ano lado a lado, em gráfico e em tabela com o saldo de cada mês
 
@@ -146,6 +147,7 @@ proj-controle-financeiro/
     └── src/
         ├── api.js           Função que chama a API e trata os erros
         ├── formatar.js      Formatação de valores (R$) e datas
+        ├── csv.js           Geração e download do arquivo CSV
         ├── App.jsx          Página principal, filtro por mês e saldo
         ├── Login.jsx        Tela de entrar e criar conta
         ├── ResumoMensal.jsx Resumo mês a mês (gráfico e tabela)
