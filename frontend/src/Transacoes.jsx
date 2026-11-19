@@ -17,6 +17,8 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
   const [formulario, setFormulario] = useState(formularioVazio)
   const [editandoId, setEditandoId] = useState(null)
   const [erro, setErro] = useState('')
+  // Quantos meses repetir ao criar (1 = só este mês)
+  const [repetir, setRepetir] = useState('1')
   // Filtros da lista (só escondem linhas; não chamam a API)
   const [busca, setBusca] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('')
@@ -62,6 +64,7 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
   function cancelarEdicao() {
     setEditandoId(null)
     setFormulario(formularioVazio())
+    setRepetir('1')
     setErro('')
   }
 
@@ -77,7 +80,7 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
       if (editandoId) {
         await api(`/transacoes/${editandoId}`, { method: 'PUT', body: corpo })
       } else {
-        await api('/transacoes', { method: 'POST', body: corpo })
+        await api(`/transacoes?repetir=${repetir}`, { method: 'POST', body: corpo })
       }
       cancelarEdicao()
       aoAlterar()
@@ -143,6 +146,20 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
             </option>
           ))}
         </select>
+        {!editandoId && (
+          <label className="repetir">
+            Repetir por
+            <input
+              type="number"
+              min="1"
+              max="60"
+              value={repetir}
+              onChange={(e) => setRepetir(e.target.value)}
+              required
+            />
+            {repetir === '1' ? 'mês' : 'meses'}
+          </label>
+        )}
         <button type="submit">{editandoId ? 'Salvar' : 'Adicionar'}</button>
         {editandoId && (
           <button type="button" onClick={cancelarEdicao}>

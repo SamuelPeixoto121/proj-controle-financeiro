@@ -100,6 +100,17 @@ button {
   width: 110px;
 }
 
+/* "Repetir por [ 12 ] meses" no formulário de transação */
+.repetir {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.repetir input {
+  width: 60px;
+}
+
 /* Linha de filtros da lista de transações */
 .filtros {
   margin-top: 16px;

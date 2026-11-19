@@ -6,6 +6,7 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 
 - **Login**: cada pessoa cria a própria conta (e-mail e senha) e só vê os próprios dados
 - Cadastrar, editar e excluir **transações** (receitas e despesas), com descrição, valor, data e categoria
+- **Transações recorrentes**: ao criar, dá para repetir a mesma transação por até 60 meses (por exemplo, o aluguel do ano todo de uma vez)
 - Cadastrar, renomear e excluir **categorias** (não é possível excluir uma categoria que tenha transações)
 - **Saldo total**: soma das receitas, soma das despesas e saldo (receitas − despesas), atualizado a cada alteração
 - **Filtro por mês**: ver as transações e o saldo de um mês específico, ou de todos os meses
@@ -113,7 +114,7 @@ As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os da
 | DELETE | `/categorias/{id}` | Exclui uma categoria (409 se tiver transações) |
 | GET | `/transacoes` | Lista as transações, da mais recente para a mais antiga |
 | GET | `/transacoes/{id}` | Busca uma transação |
-| POST | `/transacoes` | Cria uma transação |
+| POST | `/transacoes` | Cria uma transação. Com `?repetir=12`, cria a mesma transação em 12 meses seguidos, de 1 a 60 (o dia 31 cai no último dia dos meses mais curtos) |
 | PUT | `/transacoes/{id}` | Edita uma transação |
 | DELETE | `/transacoes/{id}` | Exclui uma transação |
 | GET | `/saldo` | Total de receitas, total de despesas e saldo |

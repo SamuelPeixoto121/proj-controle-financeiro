@@ -215,17 +215,32 @@ rotas.MapGet("/transacoes/{id}", async (int id, ClaimsPrincipal user, AppDbConte
         ? Results.Ok(transacao)
         : Results.NotFound());
 
-rotas.MapPost("/transacoes", async (Transacao entrada, ClaimsPrincipal user, AppDbContext db) =>
+// ?repetir=12 cria a mesma transação em 12 meses seguidos (sem o parâmetro, cria só 1).
+rotas.MapPost("/transacoes", async (Transacao entrada, string? repetir, ClaimsPrincipal user, AppDbContext db) =>
 {
+    var meses = 1;
+    if (repetir is not null && (!int.TryParse(repetir, out meses) || meses < 1 || meses > 60))
+        return Results.BadRequest("Repetir deve ser um número de meses entre 1 e 60.");
+
     var usuarioId = UsuarioId(user);
     var erro = await ValidarTransacao(entrada, usuarioId, db);
     if (erro is not null)
         return Results.BadRequest(erro);
 
-    var transacao = new Transacao { UsuarioId = usuarioId };
-    CopiarCampos(entrada, transacao);
-    db.Transacoes.Add(transacao);
+    var transacoes = Enumerable.Range(0, meses).Select(i =>
+    {
+        var copia = new Transacao { UsuarioId = usuarioId };
+        CopiarCampos(entrada, copia);
+        // Sempre a partir da data original: 31/01 vira 28/02 (ou 29/02) e depois 31/03.
+        copia.Data = entrada.Data.AddMonths(i);
+        return copia;
+    }).ToList();
+
+    // Um único SaveChanges: grava todas ou nenhuma.
+    db.Transacoes.AddRange(transacoes);
     await db.SaveChangesAsync();
+
+    var transacao = transacoes[0];
     await db.Entry(transacao).Reference(t => t.Categoria).LoadAsync();
     return Results.Created($"/transacoes/{transacao.Id}", transacao);
 });
