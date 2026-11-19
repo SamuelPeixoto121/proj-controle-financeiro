@@ -158,10 +158,11 @@ rotas.MapGet("/categorias/{id}", async (int id, ClaimsPrincipal user, AppDbConte
 
 rotas.MapPost("/categorias", async (Categoria entrada, ClaimsPrincipal user, AppDbContext db) =>
 {
-    if (string.IsNullOrWhiteSpace(entrada.Nome))
-        return Results.BadRequest("O nome da categoria é obrigatório.");
+    var erro = ValidarCategoria(entrada);
+    if (erro is not null)
+        return Results.BadRequest(erro);
 
-    var categoria = new Categoria { Nome = entrada.Nome.Trim(), UsuarioId = UsuarioId(user) };
+    var categoria = new Categoria { Nome = entrada.Nome.Trim(), MetaMensal = entrada.MetaMensal, UsuarioId = UsuarioId(user) };
     db.Categorias.Add(categoria);
     await db.SaveChangesAsync();
     return Results.Created($"/categorias/{categoria.Id}", categoria);
@@ -169,8 +170,9 @@ rotas.MapPost("/categorias", async (Categoria entrada, ClaimsPrincipal user, App
 
 rotas.MapPut("/categorias/{id}", async (int id, Categoria entrada, ClaimsPrincipal user, AppDbContext db) =>
 {
-    if (string.IsNullOrWhiteSpace(entrada.Nome))
-        return Results.BadRequest("O nome da categoria é obrigatório.");
+    var erro = ValidarCategoria(entrada);
+    if (erro is not null)
+        return Results.BadRequest(erro);
 
     var usuarioId = UsuarioId(user);
     var categoria = await db.Categorias.FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId);
@@ -178,6 +180,7 @@ rotas.MapPut("/categorias/{id}", async (int id, Categoria entrada, ClaimsPrincip
         return Results.NotFound();
 
     categoria.Nome = entrada.Nome.Trim();
+    categoria.MetaMensal = entrada.MetaMensal;
     await db.SaveChangesAsync();
     return Results.Ok(categoria);
 });
@@ -307,6 +310,32 @@ rotas.MapGet("/despesas-por-categoria", async (string? mes, ClaimsPrincipal user
     return Results.Ok(totais);
 });
 
+// Metas do mês: para cada categoria com meta, a meta e quanto já foi gasto no mês
+rotas.MapGet("/metas", async (string? mes, ClaimsPrincipal user, AppDbContext db) =>
+{
+    if (mes is null)
+        return Results.BadRequest("Informe o mês, por exemplo /metas?mes=2026-11.");
+    var despesasDoMes = FiltrarPorMes(DoUsuario(db.Transacoes, user), mes);
+    if (despesasDoMes is null)
+        return Results.BadRequest(MesInvalido);
+    despesasDoMes = despesasDoMes.Where(t => t.Tipo == TipoTransacao.Despesa);
+
+    var usuarioId = UsuarioId(user);
+    var metas = await db.Categorias
+        .Where(c => c.UsuarioId == usuarioId && c.MetaMensal != null)
+        .Select(c => new
+        {
+            categoriaId = c.Id,
+            categoria = c.Nome,
+            meta = c.MetaMensal!.Value,
+            gasto = despesasDoMes.Where(t => t.CategoriaId == c.Id).Sum(t => t.Valor),
+        })
+        .ToListAsync();
+
+    // As mais perto de estourar primeiro.
+    return Results.Ok(metas.OrderByDescending(m => m.gasto / m.meta));
+});
+
 // Resumo mês a mês: receitas, despesas e saldo de cada mês do ano (meses sem transação vêm zerados)
 rotas.MapGet("/resumo-mensal", async (string? ano, ClaimsPrincipal user, AppDbContext db) =>
 {
@@ -358,6 +387,15 @@ static async Task Entrar(HttpContext http, Usuario usuario)
     };
     var identidade = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
     await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identidade));
+}
+
+static string? ValidarCategoria(Categoria entrada)
+{
+    if (string.IsNullOrWhiteSpace(entrada.Nome))
+        return "O nome da categoria é obrigatório.";
+    if (entrada.MetaMensal is <= 0)
+        return "A meta mensal deve ser maior que zero (ou vazia, para não ter meta).";
+    return null;
 }
 
 static async Task<string?> ValidarTransacao(Transacao entrada, int usuarioId, AppDbContext db)

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
+import { formatarReais } from './formatar.js'
 
 function Categorias({ aoAlterar }) {
   const [categorias, setCategorias] = useState([])
   const [novoNome, setNovoNome] = useState('')
   const [editandoId, setEditandoId] = useState(null)
   const [nomeEditado, setNomeEditado] = useState('')
+  const [metaEditada, setMetaEditada] = useState('') // vazio = sem meta
   const [erro, setErro] = useState('')
 
   async function carregar() {
@@ -47,13 +49,20 @@ function Categorias({ aoAlterar }) {
   function comecarEdicao(categoria) {
     setEditandoId(categoria.id)
     setNomeEditado(categoria.nome)
+    setMetaEditada(categoria.metaMensal == null ? '' : String(categoria.metaMensal))
     setErro('')
   }
 
   async function salvarEdicao(evento) {
     evento.preventDefault()
     const ok = await executar(() =>
-      api(`/categorias/${editandoId}`, { method: 'PUT', body: { nome: nomeEditado } }),
+      api(`/categorias/${editandoId}`, {
+        method: 'PUT',
+        body: {
+          nome: nomeEditado,
+          metaMensal: metaEditada === '' ? null : Number(metaEditada),
+        },
+      }),
     )
     if (ok) setEditandoId(null)
   }
@@ -89,6 +98,17 @@ function Categorias({ aoAlterar }) {
                   value={nomeEditado}
                   onChange={(e) => setNomeEditado(e.target.value)}
                   autoFocus
+                  aria-label="Nome"
+                />
+                <input
+                  className="meta-input"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={metaEditada}
+                  onChange={(e) => setMetaEditada(e.target.value)}
+                  placeholder="Meta mensal"
+                  aria-label="Meta mensal (vazio = sem meta)"
                 />
                 <button type="submit">Salvar</button>
                 <button type="button" onClick={() => setEditandoId(null)}>
@@ -98,8 +118,13 @@ function Categorias({ aoAlterar }) {
             </li>
           ) : (
             <li key={categoria.id} className="linha">
-              <span>{categoria.nome}</span>
-              <button onClick={() => comecarEdicao(categoria)}>Renomear</button>
+              <span>
+                {categoria.nome}
+                {categoria.metaMensal != null && (
+                  <small className="meta-info"> · meta {formatarReais(categoria.metaMensal)}/mês</small>
+                )}
+              </span>
+              <button onClick={() => comecarEdicao(categoria)}>Editar</button>
               <button onClick={() => excluir(categoria)}>Excluir</button>
             </li>
           ),

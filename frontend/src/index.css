@@ -194,6 +194,72 @@ td {
   color: #666;
 }
 
+/* Meta na tela de categorias */
+.linha .meta-input {
+  flex: 0 0 130px;
+}
+
+.meta-info {
+  color: #666;
+}
+
+/* Metas do mês: nome | barra de progresso | valores e situação */
+.metas {
+  list-style: none;
+  padding: 0;
+}
+
+.metas li {
+  display: grid;
+  grid-template-columns: minmax(80px, 25%) 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.meta-trilho {
+  display: block;
+  height: 12px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.meta-barra {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+}
+
+.meta-texto {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.meta-texto small {
+  color: #666;
+}
+
+/* Cores de status (sempre acompanhadas de ícone e texto) */
+.meta-barra.dentro {
+  background: #0ca30c;
+}
+.meta-barra.perto {
+  background: #fab219;
+}
+.meta-barra.estourou {
+  background: #d03b3b;
+}
+.meta-icone.dentro {
+  color: #0ca30c;
+}
+.meta-icone.perto {
+  color: #b07800;
+}
+.meta-icone.estourou {
+  color: #d03b3b;
+}
+
 /* Resumo mês a mês */
 .ano strong {
   min-width: 3em;

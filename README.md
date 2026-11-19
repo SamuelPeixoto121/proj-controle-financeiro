@@ -7,7 +7,8 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 - **Login**: cada pessoa cria a própria conta (e-mail e senha) e só vê os próprios dados
 - Cadastrar, editar e excluir **transações** (receitas e despesas), com descrição, valor, data e categoria
 - **Transações recorrentes**: ao criar, dá para repetir a mesma transação por até 60 meses (por exemplo, o aluguel do ano todo de uma vez)
-- Cadastrar, renomear e excluir **categorias** (não é possível excluir uma categoria que tenha transações)
+- Cadastrar, editar e excluir **categorias** (não é possível excluir uma categoria que tenha transações)
+- **Metas de gasto por categoria**: um limite mensal opcional para cada categoria, com barra de progresso e aviso de "perto do limite" (80%) e "estourou" (acima de 100%)
 - **Saldo total**: soma das receitas, soma das despesas e saldo (receitas − despesas), atualizado a cada alteração
 - **Filtro por mês**: ver as transações e o saldo de um mês específico, ou de todos os meses
 - **Busca e filtros na lista de transações**: por descrição (sem diferenciar maiúsculas e acentos), categoria e tipo, com a soma do que está filtrado
@@ -109,8 +110,8 @@ As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os da
 |---|---|---|
 | GET | `/categorias` | Lista as categorias |
 | GET | `/categorias/{id}` | Busca uma categoria |
-| POST | `/categorias` | Cria uma categoria |
-| PUT | `/categorias/{id}` | Renomeia uma categoria |
+| POST | `/categorias` | Cria uma categoria (`{ "nome": "Mercado", "metaMensal": 800 }`; a meta é opcional) |
+| PUT | `/categorias/{id}` | Edita o nome e a meta de uma categoria (`metaMensal: null` remove a meta) |
 | DELETE | `/categorias/{id}` | Exclui uma categoria (409 se tiver transações) |
 | GET | `/transacoes` | Lista as transações, da mais recente para a mais antiga |
 | GET | `/transacoes/{id}` | Busca uma transação |
@@ -119,6 +120,7 @@ As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os da
 | DELETE | `/transacoes/{id}` | Exclui uma transação |
 | GET | `/saldo` | Total de receitas, total de despesas e saldo |
 | GET | `/despesas-por-categoria` | Total de despesas de cada categoria, do maior para o menor |
+| GET | `/metas?mes=AAAA-MM` | Para cada categoria com meta: a meta e o gasto do mês (o mês é obrigatório) |
 | GET | `/resumo-mensal?ano=AAAA` | Receitas, despesas e saldo de cada um dos 12 meses do ano (sem `ano`, usa o ano atual) |
 
 `GET /transacoes`, `GET /saldo` e `GET /despesas-por-categoria` aceitam o filtro opcional `?mes=AAAA-MM` (por exemplo, `/saldo?mes=2026-11`) para considerar só um mês. Sem o filtro, consideram todas as transações.
@@ -154,6 +156,7 @@ proj-controle-financeiro/
         ├── App.jsx          Página principal, filtro por mês e saldo
         ├── Login.jsx        Tela de entrar e criar conta
         ├── ResumoMensal.jsx Resumo mês a mês (gráfico e tabela)
+        ├── MetasDoMes.jsx   Progresso das metas de gasto do mês
         ├── DespesasPorCategoria.jsx  Gráfico de despesas por categoria
         ├── Transacoes.jsx   Tela de transações
         └── Categorias.jsx   Tela de categorias
