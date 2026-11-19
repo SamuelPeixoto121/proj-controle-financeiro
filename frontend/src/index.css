@@ -89,6 +89,48 @@ td {
   text-align: right;
 }
 
+.grafico {
+  list-style: none;
+  padding: 0;
+}
+
+/* Cada linha: nome | barra | valor */
+.grafico li {
+  display: grid;
+  grid-template-columns: minmax(80px, 30%) 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.grafico-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grafico-trilho {
+  display: block;
+}
+
+/* Barra fina, reta no início e arredondada na ponta */
+.grafico-barra {
+  display: block;
+  height: 16px;
+  min-width: 2px;
+  background: #2a78d6;
+  border-radius: 0 4px 4px 0;
+}
+
+.grafico-valor {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.grafico-valor small {
+  color: #666;
+}
+
 .receita {
   color: #1b7f3b;
 }

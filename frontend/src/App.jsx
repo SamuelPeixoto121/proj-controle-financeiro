@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { formatarReais, mesAtual } from './formatar.js'
 import Categorias from './Categorias.jsx'
+import DespesasPorCategoria from './DespesasPorCategoria.jsx'
 import Transacoes from './Transacoes.jsx'
 
 function App() {
@@ -54,6 +55,7 @@ function App() {
         </ul>
       )}
 
+      <DespesasPorCategoria mes={mes} atualizacao={atualizacao} />
       <Transacoes mes={mes} atualizacao={atualizacao} aoAlterar={aoAlterar} />
       <Categorias aoAlterar={aoAlterar} />
     </main>

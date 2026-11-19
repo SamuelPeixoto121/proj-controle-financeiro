@@ -23,6 +23,8 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+const string MesInvalido = "Mês inválido. Use o formato AAAA-MM, por exemplo 2026-11.";
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -84,17 +86,9 @@ app.MapDelete("/categorias/{id}", async (int id, AppDbContext db) =>
 // Transações
 app.MapGet("/transacoes", async (string? mes, AppDbContext db) =>
 {
-    var consulta = db.Transacoes.Include(t => t.Categoria).AsQueryable();
-
-    if (mes is not null)
-    {
-        var intervalo = IntervaloDoMes(mes);
-        if (intervalo is null)
-            return Results.BadRequest("Mês inválido. Use o formato AAAA-MM, por exemplo 2026-11.");
-
-        var (inicio, fim) = intervalo.Value;
-        consulta = consulta.Where(t => t.Data >= inicio && t.Data < fim);
-    }
+    var consulta = FiltrarPorMes(db.Transacoes.Include(t => t.Categoria), mes);
+    if (consulta is null)
+        return Results.BadRequest(MesInvalido);
 
     return Results.Ok(await consulta
         .OrderByDescending(t => t.Data)
@@ -151,17 +145,9 @@ app.MapDelete("/transacoes/{id}", async (int id, AppDbContext db) =>
 // Saldo
 app.MapGet("/saldo", async (string? mes, AppDbContext db) =>
 {
-    var consulta = db.Transacoes.AsQueryable();
-
-    if (mes is not null)
-    {
-        var intervalo = IntervaloDoMes(mes);
-        if (intervalo is null)
-            return Results.BadRequest("Mês inválido. Use o formato AAAA-MM, por exemplo 2026-11.");
-
-        var (inicio, fim) = intervalo.Value;
-        consulta = consulta.Where(t => t.Data >= inicio && t.Data < fim);
-    }
+    var consulta = FiltrarPorMes(db.Transacoes, mes);
+    if (consulta is null)
+        return Results.BadRequest(MesInvalido);
 
     var receitas = await consulta
         .Where(t => t.Tipo == TipoTransacao.Receita)
@@ -171,6 +157,23 @@ app.MapGet("/saldo", async (string? mes, AppDbContext db) =>
         .SumAsync(t => t.Valor);
 
     return Results.Ok(new { receitas, despesas, saldo = receitas - despesas });
+});
+
+// Gráfico: total de despesas por categoria, do maior para o menor
+app.MapGet("/despesas-por-categoria", async (string? mes, AppDbContext db) =>
+{
+    var consulta = FiltrarPorMes(db.Transacoes, mes);
+    if (consulta is null)
+        return Results.BadRequest(MesInvalido);
+
+    var totais = await consulta
+        .Where(t => t.Tipo == TipoTransacao.Despesa)
+        .GroupBy(t => new { t.CategoriaId, t.Categoria!.Nome })
+        .Select(g => new { categoriaId = g.Key.CategoriaId, categoria = g.Key.Nome, total = g.Sum(t => t.Valor) })
+        .OrderByDescending(x => x.total)
+        .ToListAsync();
+
+    return Results.Ok(totais);
 });
 
 app.Run();
@@ -190,12 +193,17 @@ static async Task<string?> ValidarTransacao(Transacao entrada, AppDbContext db)
     return null;
 }
 
-// "2026-11" -> (01/11/2026, 01/12/2026). Devolve null se o texto não for um mês válido.
-static (DateTime inicio, DateTime fim)? IntervaloDoMes(string mes)
+// Filtra as transações do mês ("2026-11" = de 01/11/2026 até antes de 01/12/2026).
+// Sem mês, devolve a consulta como está. Com mês inválido, devolve null.
+static IQueryable<Transacao>? FiltrarPorMes(IQueryable<Transacao> consulta, string? mes)
 {
+    if (mes is null)
+        return consulta;
     if (!DateTime.TryParseExact(mes, "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var inicio))
         return null;
-    return (inicio, inicio.AddMonths(1));
+
+    var fim = inicio.AddMonths(1);
+    return consulta.Where(t => t.Data >= inicio && t.Data < fim);
 }
 
 static void CopiarCampos(Transacao origem, Transacao destino)

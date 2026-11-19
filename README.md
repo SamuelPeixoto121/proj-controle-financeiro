@@ -8,6 +8,7 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 - Cadastrar, renomear e excluir **categorias** (não é possível excluir uma categoria que tenha transações)
 - **Saldo total**: soma das receitas, soma das despesas e saldo (receitas − despesas), atualizado a cada alteração
 - **Filtro por mês**: ver as transações e o saldo de um mês específico, ou de todos os meses
+- **Gráfico de despesas por categoria**: barras da maior para a menor despesa, com valor e porcentagem
 
 ## Tecnologias
 
@@ -97,8 +98,9 @@ Abra **http://localhost:5173** no navegador. A API precisa estar rodando ao mesm
 | PUT | `/transacoes/{id}` | Edita uma transação |
 | DELETE | `/transacoes/{id}` | Exclui uma transação |
 | GET | `/saldo` | Total de receitas, total de despesas e saldo |
+| GET | `/despesas-por-categoria` | Total de despesas de cada categoria, do maior para o menor |
 
-`GET /transacoes` e `GET /saldo` aceitam o filtro opcional `?mes=AAAA-MM` (por exemplo, `/saldo?mes=2026-11`) para considerar só um mês. Sem o filtro, consideram todas as transações.
+`GET /transacoes`, `GET /saldo` e `GET /despesas-por-categoria` aceitam o filtro opcional `?mes=AAAA-MM` (por exemplo, `/saldo?mes=2026-11`) para considerar só um mês. Sem o filtro, consideram todas as transações.
 
 Exemplo de corpo para criar uma transação:
 
@@ -127,7 +129,8 @@ proj-controle-financeiro/
     └── src/
         ├── api.js           Função que chama a API e trata os erros
         ├── formatar.js      Formatação de valores (R$) e datas
-        ├── App.jsx          Página principal e saldo
+        ├── App.jsx          Página principal, filtro por mês e saldo
+        ├── DespesasPorCategoria.jsx  Gráfico de despesas por categoria
         ├── Transacoes.jsx   Tela de transações
         └── Categorias.jsx   Tela de categorias
 ```
