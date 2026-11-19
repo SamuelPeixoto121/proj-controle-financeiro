@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
-import { formatarData, formatarReais, hoje } from './formatar.js'
+import { formatarData, formatarReais, hoje, normalizar } from './formatar.js'
 
 const formularioVazio = () => ({
   descricao: '',
@@ -16,6 +16,10 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
   const [formulario, setFormulario] = useState(formularioVazio)
   const [editandoId, setEditandoId] = useState(null)
   const [erro, setErro] = useState('')
+  // Filtros da lista (só escondem linhas; não chamam a API)
+  const [busca, setBusca] = useState('')
+  const [filtroCategoria, setFiltroCategoria] = useState('')
+  const [filtroTipo, setFiltroTipo] = useState('')
 
   // Recarrega sempre que algo mudar em qualquer parte da tela ou o mês mudar.
   useEffect(() => {
@@ -26,6 +30,23 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
       })
       .catch((e) => setErro(e.message))
   }, [mes, atualizacao])
+
+  const termo = normalizar(busca.trim())
+  const filtradas = transacoes.filter(
+    (t) =>
+      normalizar(t.descricao).includes(termo) &&
+      (!filtroCategoria || t.categoriaId === Number(filtroCategoria)) &&
+      (!filtroTipo || t.tipo === filtroTipo),
+  )
+  const filtrando = busca || filtroCategoria || filtroTipo
+  const somar = (tipo) =>
+    filtradas.filter((t) => t.tipo === tipo).reduce((soma, t) => soma + t.valor, 0)
+
+  function limparFiltros() {
+    setBusca('')
+    setFiltroCategoria('')
+    setFiltroTipo('')
+  }
 
   function alterarCampo(evento) {
     const { name, value } = evento.target
@@ -129,35 +150,85 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
       {transacoes.length === 0 ? (
         <p>{mes ? 'Nenhuma transação neste mês.' : 'Nenhuma transação cadastrada.'}</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Descrição</th>
-              <th>Categoria</th>
-              <th>Tipo</th>
-              <th className="valor">Valor</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {transacoes.map((transacao) => (
-              <tr key={transacao.id}>
-                <td>{formatarData(transacao.data)}</td>
-                <td>{transacao.descricao}</td>
-                <td>{transacao.categoria?.nome}</td>
-                <td>{transacao.tipo}</td>
-                <td className={`valor ${transacao.tipo === 'Receita' ? 'receita' : 'despesa'}`}>
-                  {formatarReais(transacao.valor)}
-                </td>
-                <td className="acoes">
-                  <button onClick={() => editar(transacao)}>Editar</button>
-                  <button onClick={() => excluir(transacao)}>Excluir</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          <div className="formulario filtros">
+            <input
+              type="search"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar descrição..."
+              aria-label="Buscar descrição"
+            />
+            <select
+              value={filtroCategoria}
+              onChange={(e) => setFiltroCategoria(e.target.value)}
+              aria-label="Filtrar por categoria"
+            >
+              <option value="">Todas as categorias</option>
+              {categorias.map((categoria) => (
+                <option key={categoria.id} value={categoria.id}>
+                  {categoria.nome}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filtroTipo}
+              onChange={(e) => setFiltroTipo(e.target.value)}
+              aria-label="Filtrar por tipo"
+            >
+              <option value="">Todos os tipos</option>
+              <option value="Receita">Receitas</option>
+              <option value="Despesa">Despesas</option>
+            </select>
+            {filtrando && (
+              <button type="button" onClick={limparFiltros}>
+                Limpar
+              </button>
+            )}
+          </div>
+
+          {filtradas.length === 0 ? (
+            <p>Nenhuma transação encontrada com esses filtros.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Descrição</th>
+                  <th>Categoria</th>
+                  <th>Tipo</th>
+                  <th className="valor">Valor</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtradas.map((transacao) => (
+                  <tr key={transacao.id}>
+                    <td>{formatarData(transacao.data)}</td>
+                    <td>{transacao.descricao}</td>
+                    <td>{transacao.categoria?.nome}</td>
+                    <td>{transacao.tipo}</td>
+                    <td className={`valor ${transacao.tipo === 'Receita' ? 'receita' : 'despesa'}`}>
+                      {formatarReais(transacao.valor)}
+                    </td>
+                    <td className="acoes">
+                      <button onClick={() => editar(transacao)}>Editar</button>
+                      <button onClick={() => excluir(transacao)}>Excluir</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {filtradas.length > 0 && (
+            <p className="totais-filtro">
+              {filtradas.length} {filtradas.length === 1 ? 'transação' : 'transações'} · Receitas{' '}
+              <span className="receita">{formatarReais(somar('Receita'))}</span> · Despesas{' '}
+              <span className="despesa">{formatarReais(somar('Despesa'))}</span>
+            </p>
+          )}
+        </>
       )}
     </section>
   )

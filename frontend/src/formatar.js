@@ -11,3 +11,8 @@ export const hoje = () => new Date().toLocaleDateString('sv-SE')
 
 // Mês atual no formato do <input type="month">: "2026-11".
 export const mesAtual = () => hoje().slice(0, 7)
+
+// Para buscas: "Salário" -> "salario" (sem acentos e em minúsculas).
+// O NFD separa a letra do acento ("á" vira "a" + "´"), e o replace apaga os acentos.
+export const normalizar = (texto) =>
+  texto.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()

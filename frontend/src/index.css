@@ -100,6 +100,19 @@ button {
   width: 110px;
 }
 
+/* Linha de filtros da lista de transações */
+.filtros {
+  margin-top: 16px;
+}
+
+.filtros input {
+  flex: 1 1 200px;
+}
+
+.totais-filtro {
+  color: #666;
+}
+
 select {
   font: inherit;
   padding: 6px 10px;
