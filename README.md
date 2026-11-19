@@ -10,6 +10,7 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 - **Saldo total**: soma das receitas, soma das despesas e saldo (receitas − despesas), atualizado a cada alteração
 - **Filtro por mês**: ver as transações e o saldo de um mês específico, ou de todos os meses
 - **Gráfico de despesas por categoria**: barras da maior para a menor despesa, com valor e porcentagem
+- **Resumo mês a mês**: receitas e despesas de cada mês do ano lado a lado, em gráfico e em tabela com o saldo de cada mês
 
 ## Tecnologias
 
@@ -113,6 +114,7 @@ As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os da
 | DELETE | `/transacoes/{id}` | Exclui uma transação |
 | GET | `/saldo` | Total de receitas, total de despesas e saldo |
 | GET | `/despesas-por-categoria` | Total de despesas de cada categoria, do maior para o menor |
+| GET | `/resumo-mensal?ano=AAAA` | Receitas, despesas e saldo de cada um dos 12 meses do ano (sem `ano`, usa o ano atual) |
 
 `GET /transacoes`, `GET /saldo` e `GET /despesas-por-categoria` aceitam o filtro opcional `?mes=AAAA-MM` (por exemplo, `/saldo?mes=2026-11`) para considerar só um mês. Sem o filtro, consideram todas as transações.
 
@@ -145,6 +147,7 @@ proj-controle-financeiro/
         ├── formatar.js      Formatação de valores (R$) e datas
         ├── App.jsx          Página principal, filtro por mês e saldo
         ├── Login.jsx        Tela de entrar e criar conta
+        ├── ResumoMensal.jsx Resumo mês a mês (gráfico e tabela)
         ├── DespesasPorCategoria.jsx  Gráfico de despesas por categoria
         ├── Transacoes.jsx   Tela de transações
         └── Categorias.jsx   Tela de categorias

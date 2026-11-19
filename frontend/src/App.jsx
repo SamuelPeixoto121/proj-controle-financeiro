@@ -4,6 +4,7 @@ import { formatarReais, mesAtual } from './formatar.js'
 import Categorias from './Categorias.jsx'
 import DespesasPorCategoria from './DespesasPorCategoria.jsx'
 import Login from './Login.jsx'
+import ResumoMensal from './ResumoMensal.jsx'
 import Transacoes from './Transacoes.jsx'
 
 function App() {
@@ -87,6 +88,7 @@ function App() {
         </ul>
       )}
 
+      <ResumoMensal mes={mes} atualizacao={atualizacao} />
       <DespesasPorCategoria mes={mes} atualizacao={atualizacao} />
       <Transacoes mes={mes} atualizacao={atualizacao} aoAlterar={aoAlterar} />
       <Categorias aoAlterar={aoAlterar} />

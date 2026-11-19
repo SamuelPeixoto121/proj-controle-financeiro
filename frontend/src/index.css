@@ -170,6 +170,73 @@ td {
   color: #666;
 }
 
+/* Resumo mês a mês */
+.ano strong {
+  min-width: 3em;
+  text-align: center;
+}
+
+.legenda {
+  display: flex;
+  gap: 16px;
+  list-style: none;
+  padding: 0;
+  color: #666;
+}
+
+.legenda .cor {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+/* 12 colunas lado a lado, cada uma com a barra de receitas e a de despesas */
+.colunas,
+.rotulos-meses {
+  display: flex;
+  gap: 4px;
+}
+
+.colunas {
+  height: 160px;
+  border-bottom: 1px solid #ccc;
+}
+
+.coluna {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.coluna:hover {
+  background: #e8e8e8;
+}
+
+/* Barra fina, reta na base e arredondada no topo */
+.barra {
+  width: 10px;
+  border-radius: 4px 4px 0 0;
+}
+
+.barra-receitas {
+  background: #2a78d6;
+}
+
+.barra-despesas {
+  background: #eb6834;
+}
+
+.rotulos-meses span {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  color: #666;
+}
+
 .receita {
   color: #1b7f3b;
 }

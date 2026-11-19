@@ -277,6 +277,34 @@ rotas.MapGet("/despesas-por-categoria", async (string? mes, ClaimsPrincipal user
     return Results.Ok(totais);
 });
 
+// Resumo mês a mês: receitas, despesas e saldo de cada mês do ano (meses sem transação vêm zerados)
+rotas.MapGet("/resumo-mensal", async (string? ano, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var anoEscolhido = DateTime.Today.Year;
+    if (ano is not null && (!int.TryParse(ano, out anoEscolhido) || anoEscolhido < 1900 || anoEscolhido > 2100))
+        return Results.BadRequest("Ano inválido. Use quatro dígitos, por exemplo 2026.");
+
+    var inicio = new DateTime(anoEscolhido, 1, 1);
+    var fim = inicio.AddYears(1);
+
+    // O banco devolve um total por (mês, tipo); só vêm os meses que têm transações.
+    var totais = await DoUsuario(db.Transacoes, user)
+        .Where(t => t.Data >= inicio && t.Data < fim)
+        .GroupBy(t => new { t.Data.Month, t.Tipo })
+        .Select(g => new { Mes = g.Key.Month, g.Key.Tipo, Total = g.Sum(t => t.Valor) })
+        .ToListAsync();
+
+    // Monta os 12 meses, preenchendo com zero os que não têm transações.
+    var meses = Enumerable.Range(1, 12).Select(m =>
+    {
+        var receitas = totais.Where(x => x.Mes == m && x.Tipo == TipoTransacao.Receita).Sum(x => x.Total);
+        var despesas = totais.Where(x => x.Mes == m && x.Tipo == TipoTransacao.Despesa).Sum(x => x.Total);
+        return new { mes = $"{anoEscolhido}-{m:00}", receitas, despesas, saldo = receitas - despesas };
+    });
+
+    return Results.Ok(meses);
+});
+
 app.Run();
 
 // Id do usuário logado, guardado no cookie no momento do login.
