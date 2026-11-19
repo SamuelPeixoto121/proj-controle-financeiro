@@ -7,6 +7,7 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 - Cadastrar, editar e excluir **transações** (receitas e despesas), com descrição, valor, data e categoria
 - Cadastrar, renomear e excluir **categorias** (não é possível excluir uma categoria que tenha transações)
 - **Saldo total**: soma das receitas, soma das despesas e saldo (receitas − despesas), atualizado a cada alteração
+- **Filtro por mês**: ver as transações e o saldo de um mês específico, ou de todos os meses
 
 ## Tecnologias
 
@@ -96,6 +97,8 @@ Abra **http://localhost:5173** no navegador. A API precisa estar rodando ao mesm
 | PUT | `/transacoes/{id}` | Edita uma transação |
 | DELETE | `/transacoes/{id}` | Exclui uma transação |
 | GET | `/saldo` | Total de receitas, total de despesas e saldo |
+
+`GET /transacoes` e `GET /saldo` aceitam o filtro opcional `?mes=AAAA-MM` (por exemplo, `/saldo?mes=2026-11`) para considerar só um mês. Sem o filtro, consideram todas as transações.
 
 Exemplo de corpo para criar uma transação:
 

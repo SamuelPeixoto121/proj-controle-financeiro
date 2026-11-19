@@ -33,6 +33,10 @@ main {
   flex: 1;
 }
 
+.filtro input {
+  flex: 0 0 auto;
+}
+
 input,
 button {
   font: inherit;

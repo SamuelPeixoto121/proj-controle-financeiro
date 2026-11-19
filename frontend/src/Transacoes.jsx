@@ -10,22 +10,22 @@ const formularioVazio = () => ({
   categoriaId: '',
 })
 
-function Transacoes({ atualizacao, aoAlterar }) {
+function Transacoes({ mes, atualizacao, aoAlterar }) {
   const [transacoes, setTransacoes] = useState([])
   const [categorias, setCategorias] = useState([])
   const [formulario, setFormulario] = useState(formularioVazio)
   const [editandoId, setEditandoId] = useState(null)
   const [erro, setErro] = useState('')
 
-  // Recarrega sempre que algo mudar em qualquer parte da tela.
+  // Recarrega sempre que algo mudar em qualquer parte da tela ou o mês mudar.
   useEffect(() => {
-    Promise.all([api('/transacoes'), api('/categorias')])
+    Promise.all([api(mes ? `/transacoes?mes=${mes}` : '/transacoes'), api('/categorias')])
       .then(([listaTransacoes, listaCategorias]) => {
         setTransacoes(listaTransacoes)
         setCategorias(listaCategorias)
       })
       .catch((e) => setErro(e.message))
-  }, [atualizacao])
+  }, [mes, atualizacao])
 
   function alterarCampo(evento) {
     const { name, value } = evento.target
@@ -127,7 +127,7 @@ function Transacoes({ atualizacao, aoAlterar }) {
       {erro && <p className="erro">{erro}</p>}
 
       {transacoes.length === 0 ? (
-        <p>Nenhuma transação cadastrada.</p>
+        <p>{mes ? 'Nenhuma transação neste mês.' : 'Nenhuma transação cadastrada.'}</p>
       ) : (
         <table>
           <thead>

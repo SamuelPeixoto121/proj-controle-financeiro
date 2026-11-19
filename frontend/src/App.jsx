@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
-import { formatarReais } from './formatar.js'
+import { formatarReais, mesAtual } from './formatar.js'
 import Categorias from './Categorias.jsx'
 import Transacoes from './Transacoes.jsx'
 
@@ -10,16 +10,27 @@ function App() {
   // Sobe a cada alteração, para o saldo e as listas recarregarem.
   const [atualizacao, setAtualizacao] = useState(0)
   const aoAlterar = () => setAtualizacao((n) => n + 1)
+  // Mês escolhido ("2026-11"). Vazio = todos os meses.
+  const [mes, setMes] = useState(mesAtual)
 
   useEffect(() => {
-    api('/saldo')
+    api(mes ? `/saldo?mes=${mes}` : '/saldo')
       .then(setSaldo)
       .catch((e) => setErro(e.message))
-  }, [atualizacao])
+  }, [atualizacao, mes])
 
   return (
     <main>
       <h1>Controle Financeiro</h1>
+
+      <div className="linha filtro">
+        <label htmlFor="mes">Mês:</label>
+        <input id="mes" type="month" value={mes} onChange={(e) => setMes(e.target.value)} />
+        <button onClick={() => setMes('')} disabled={!mes}>
+          Todos
+        </button>
+        {!mes && <span>Mostrando todos os meses</span>}
+      </div>
 
       {erro && <p className="erro">{erro}</p>}
       {!erro && !saldo && <p>Carregando...</p>}
@@ -43,7 +54,7 @@ function App() {
         </ul>
       )}
 
-      <Transacoes atualizacao={atualizacao} aoAlterar={aoAlterar} />
+      <Transacoes mes={mes} atualizacao={atualizacao} aoAlterar={aoAlterar} />
       <Categorias aoAlterar={aoAlterar} />
     </main>
   )

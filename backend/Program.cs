@@ -82,12 +82,25 @@ app.MapDelete("/categorias/{id}", async (int id, AppDbContext db) =>
 });
 
 // Transações
-app.MapGet("/transacoes", async (AppDbContext db) =>
-    await db.Transacoes
-        .Include(t => t.Categoria)
+app.MapGet("/transacoes", async (string? mes, AppDbContext db) =>
+{
+    var consulta = db.Transacoes.Include(t => t.Categoria).AsQueryable();
+
+    if (mes is not null)
+    {
+        var intervalo = IntervaloDoMes(mes);
+        if (intervalo is null)
+            return Results.BadRequest("Mês inválido. Use o formato AAAA-MM, por exemplo 2026-11.");
+
+        var (inicio, fim) = intervalo.Value;
+        consulta = consulta.Where(t => t.Data >= inicio && t.Data < fim);
+    }
+
+    return Results.Ok(await consulta
         .OrderByDescending(t => t.Data)
         .ThenByDescending(t => t.Id)
         .ToListAsync());
+});
 
 app.MapGet("/transacoes/{id}", async (int id, AppDbContext db) =>
     await db.Transacoes.Include(t => t.Categoria).FirstOrDefaultAsync(t => t.Id == id) is Transacao transacao
@@ -136,16 +149,28 @@ app.MapDelete("/transacoes/{id}", async (int id, AppDbContext db) =>
 });
 
 // Saldo
-app.MapGet("/saldo", async (AppDbContext db) =>
+app.MapGet("/saldo", async (string? mes, AppDbContext db) =>
 {
-    var receitas = await db.Transacoes
+    var consulta = db.Transacoes.AsQueryable();
+
+    if (mes is not null)
+    {
+        var intervalo = IntervaloDoMes(mes);
+        if (intervalo is null)
+            return Results.BadRequest("Mês inválido. Use o formato AAAA-MM, por exemplo 2026-11.");
+
+        var (inicio, fim) = intervalo.Value;
+        consulta = consulta.Where(t => t.Data >= inicio && t.Data < fim);
+    }
+
+    var receitas = await consulta
         .Where(t => t.Tipo == TipoTransacao.Receita)
         .SumAsync(t => t.Valor);
-    var despesas = await db.Transacoes
+    var despesas = await consulta
         .Where(t => t.Tipo == TipoTransacao.Despesa)
         .SumAsync(t => t.Valor);
 
-    return new { receitas, despesas, saldo = receitas - despesas };
+    return Results.Ok(new { receitas, despesas, saldo = receitas - despesas });
 });
 
 app.Run();
@@ -163,6 +188,14 @@ static async Task<string?> ValidarTransacao(Transacao entrada, AppDbContext db)
     if (!await db.Categorias.AnyAsync(c => c.Id == entrada.CategoriaId))
         return "Categoria não encontrada.";
     return null;
+}
+
+// "2026-11" -> (01/11/2026, 01/12/2026). Devolve null se o texto não for um mês válido.
+static (DateTime inicio, DateTime fim)? IntervaloDoMes(string mes)
+{
+    if (!DateTime.TryParseExact(mes, "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var inicio))
+        return null;
+    return (inicio, inicio.AddMonths(1));
 }
 
 static void CopiarCampos(Transacao origem, Transacao destino)

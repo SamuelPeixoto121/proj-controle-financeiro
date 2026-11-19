@@ -8,3 +8,6 @@ export const formatarData = (data) => data.slice(0, 10).split('-').reverse().joi
 // Data de hoje no formato do <input type="date">: "2026-11-18".
 // O formato sueco (sv-SE) já é AAAA-MM-DD e usa o fuso horário do computador.
 export const hoje = () => new Date().toLocaleDateString('sv-SE')
+
+// Mês atual no formato do <input type="month">: "2026-11".
+export const mesAtual = () => hoje().slice(0, 7)
