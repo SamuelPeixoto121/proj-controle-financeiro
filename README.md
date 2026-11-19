@@ -93,6 +93,8 @@ Abra **http://localhost:5173** no navegador e clique em **Criar conta**. A API p
 
 O login usa um cookie de sessão (`HttpOnly`), que o navegador envia sozinho em cada requisição.
 
+Para dificultar a descoberta de senhas por tentativa e erro, `/auth/cadastro` e `/auth/login` aceitam juntas **até 5 tentativas por minuto de cada IP**. A partir da 6ª, respondem **429** até o minuto virar. O contador fica na memória e zera quando a API reinicia.
+
 | Método | Rota | Descrição |
 |---|---|---|
 | POST | `/auth/cadastro` | Cria uma conta e já entra (`{ "email": "...", "senha": "..." }`, senha com 6+ caracteres) |

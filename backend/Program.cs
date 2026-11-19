@@ -1,10 +1,12 @@
 using System.Security.Claims;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using ControleFinanceiro.Data;
 using ControleFinanceiro.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,6 +48,18 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 builder.Services.AddAuthorization();
 
+// Contra força bruta: cada IP pode tentar entrar ou se cadastrar 5 vezes por minuto.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = (context, cancelamento) => new ValueTask(
+        context.HttpContext.Response.WriteAsJsonAsync("Muitas tentativas. Aguarde um minuto e tente de novo.", cancelamento));
+    options.AddPolicy("login", http =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            http.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1) }));
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -61,6 +75,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -95,7 +110,7 @@ app.MapPost("/auth/cadastro", async (Credenciais entrada, AppDbContext db, HttpC
 
     await Entrar(http, usuario);
     return Results.Created("/auth/eu", new { usuario.Id, usuario.Email });
-});
+}).RequireRateLimiting("login");
 
 app.MapPost("/auth/login", async (Credenciais entrada, AppDbContext db, HttpContext http) =>
 {
@@ -108,7 +123,7 @@ app.MapPost("/auth/login", async (Credenciais entrada, AppDbContext db, HttpCont
 
     await Entrar(http, usuario);
     return Results.Ok(new { usuario.Id, usuario.Email });
-});
+}).RequireRateLimiting("login");
 
 app.MapPost("/auth/logout", async (HttpContext http) =>
 {
