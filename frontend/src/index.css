@@ -37,6 +37,45 @@ main {
   flex: 0 0 auto;
 }
 
+/* Topo do painel: título, e-mail e botão Sair */
+.topo h1 {
+  flex: 1;
+}
+
+.topo .usuario {
+  flex: 0 1 auto;
+  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tela de login */
+.login {
+  max-width: 360px;
+}
+
+.login-formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-formulario label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+button.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #2a78d6;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 input,
 button {
   font: inherit;

@@ -4,6 +4,7 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 
 ## Funcionalidades
 
+- **Login**: cada pessoa cria a própria conta (e-mail e senha) e só vê os próprios dados
 - Cadastrar, editar e excluir **transações** (receitas e despesas), com descrição, valor, data e categoria
 - Cadastrar, renomear e excluir **categorias** (não é possível excluir uma categoria que tenha transações)
 - **Saldo total**: soma das receitas, soma das despesas e saldo (receitas − despesas), atualizado a cada alteração
@@ -81,9 +82,22 @@ npm install
 npm run dev
 ```
 
-Abra **http://localhost:5173** no navegador. A API precisa estar rodando ao mesmo tempo.
+Abra **http://localhost:5173** no navegador e clique em **Criar conta**. A API precisa estar rodando ao mesmo tempo.
+
+> Se o banco já tinha categorias e transações de antes do login existir, elas passam a ser da **primeira conta criada**.
 
 ## Rotas da API
+
+O login usa um cookie de sessão (`HttpOnly`), que o navegador envia sozinho em cada requisição.
+
+| Método | Rota | Descrição |
+|---|---|---|
+| POST | `/auth/cadastro` | Cria uma conta e já entra (`{ "email": "...", "senha": "..." }`, senha com 6+ caracteres) |
+| POST | `/auth/login` | Entra com e-mail e senha |
+| POST | `/auth/logout` | Sai |
+| GET | `/auth/eu` | Mostra quem está logado (401 se ninguém) |
+
+As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os dados do usuário logado.
 
 | Método | Rota | Descrição |
 |---|---|---|
@@ -123,13 +137,14 @@ proj-controle-financeiro/
 ├── backend/                 API em ASP.NET Core
 │   ├── Data/                AppDbContext (configuração do banco)
 │   ├── Migrations/          Migrations do Entity Framework
-│   ├── Models/              Categoria, Transacao e TipoTransacao
-│   └── Program.cs           Configuração da API e todas as rotas
+│   ├── Models/              Usuario, Categoria, Transacao e TipoTransacao
+│   └── Program.cs           Configuração da API, login e todas as rotas
 └── frontend/                Front-end em React
     └── src/
         ├── api.js           Função que chama a API e trata os erros
         ├── formatar.js      Formatação de valores (R$) e datas
         ├── App.jsx          Página principal, filtro por mês e saldo
+        ├── Login.jsx        Tela de entrar e criar conta
         ├── DespesasPorCategoria.jsx  Gráfico de despesas por categoria
         ├── Transacoes.jsx   Tela de transações
         └── Categorias.jsx   Tela de categorias

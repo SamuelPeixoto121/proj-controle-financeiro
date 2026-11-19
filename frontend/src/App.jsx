@@ -3,9 +3,12 @@ import { api } from './api.js'
 import { formatarReais, mesAtual } from './formatar.js'
 import Categorias from './Categorias.jsx'
 import DespesasPorCategoria from './DespesasPorCategoria.jsx'
+import Login from './Login.jsx'
 import Transacoes from './Transacoes.jsx'
 
 function App() {
+  // undefined = ainda verificando, null = ninguém logado, objeto = usuário logado
+  const [usuario, setUsuario] = useState(undefined)
   const [saldo, setSaldo] = useState(null)
   const [erro, setErro] = useState('')
   // Sobe a cada alteração, para o saldo e as listas recarregarem.
@@ -14,15 +17,44 @@ function App() {
   // Mês escolhido ("2026-11"). Vazio = todos os meses.
   const [mes, setMes] = useState(mesAtual)
 
+  // Ao abrir a página: já existe alguém logado?
   useEffect(() => {
+    api('/auth/eu')
+      .then(setUsuario)
+      .catch(() => setUsuario(null))
+  }, [])
+
+  // Se a sessão expirar no meio do uso, volta para a tela de login.
+  useEffect(() => {
+    const voltarAoLogin = () => setUsuario(null)
+    window.addEventListener('sessao-expirada', voltarAoLogin)
+    return () => window.removeEventListener('sessao-expirada', voltarAoLogin)
+  }, [])
+
+  useEffect(() => {
+    if (!usuario) return
     api(mes ? `/saldo?mes=${mes}` : '/saldo')
       .then(setSaldo)
       .catch((e) => setErro(e.message))
-  }, [atualizacao, mes])
+  }, [usuario, atualizacao, mes])
+
+  async function sair() {
+    await api('/auth/logout', { method: 'POST' }).catch(() => {})
+    setSaldo(null)
+    setErro('')
+    setUsuario(null)
+  }
+
+  if (usuario === undefined) return <main>Carregando...</main>
+  if (usuario === null) return <Login aoEntrar={setUsuario} />
 
   return (
     <main>
-      <h1>Controle Financeiro</h1>
+      <div className="linha topo">
+        <h1>Controle Financeiro</h1>
+        <span className="usuario">{usuario.email}</span>
+        <button onClick={sair}>Sair</button>
+      </div>
 
       <div className="linha filtro">
         <label htmlFor="mes">Mês:</label>
