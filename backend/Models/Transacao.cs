@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 
 namespace ControleFinanceiro.Models;
@@ -15,4 +16,8 @@ public class Transacao
 
     public int CategoriaId { get; set; }
     public Categoria? Categoria { get; set; }
+
+    // Dono da transação. Fica vazio só nos dados antigos, até o primeiro cadastro.
+    [JsonIgnore]
+    public int? UsuarioId { get; set; }
 }

@@ -7,6 +7,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<Categoria> Categorias => Set<Categoria>();
     public DbSet<Transacao> Transacoes => Set<Transacao>();
+    public DbSet<Usuario> Usuarios => Set<Usuario>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -14,6 +15,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasOne(t => t.Categoria)
             .WithMany()
             .HasForeignKey(t => t.CategoriaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Dois usuários não podem ter o mesmo e-mail.
+        modelBuilder.Entity<Usuario>()
+            .HasIndex(u => u.Email)
+            .IsUnique();
+
+        modelBuilder.Entity<Categoria>()
+            .HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(c => c.UsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Transacao>()
+            .HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(t => t.UsuarioId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

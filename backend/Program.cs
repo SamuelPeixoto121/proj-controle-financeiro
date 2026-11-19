@@ -1,6 +1,10 @@
+using System.Security.Claims;
 using System.Text.Json.Serialization;
 using ControleFinanceiro.Data;
 using ControleFinanceiro.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,7 +20,31 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
         policy.WithOrigins("http://localhost:5173")
             .AllowAnyHeader()
-            .AllowAnyMethod()));
+            .AllowAnyMethod()
+            .AllowCredentials()));
+
+// Login com cookie: depois do login, o navegador manda o cookie em toda requisição.
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.Cookie.Name = "controle_financeiro_sessao";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.ExpireTimeSpan = TimeSpan.FromDays(7);
+        options.SlidingExpiration = true;
+        // Numa API, quem não está logado recebe 401 (e não um redirecionamento para uma página de login).
+        options.Events.OnRedirectToLogin = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        };
+        options.Events.OnRedirectToAccessDenied = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        };
+    });
+builder.Services.AddAuthorization();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -24,6 +52,7 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 const string MesInvalido = "Mês inválido. Use o formato AAAA-MM, por exemplo 2026-11.";
+var hasher = new PasswordHasher<Usuario>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -32,35 +61,104 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet("/", () => "API de controle financeiro no ar");
 
+// Autenticação
+app.MapPost("/auth/cadastro", async (Credenciais entrada, AppDbContext db, HttpContext http) =>
+{
+    var email = entrada.Email?.Trim().ToLowerInvariant() ?? "";
+    if (!email.Contains('@') || email.Length > 256)
+        return Results.BadRequest("Informe um e-mail válido.");
+    if (entrada.Senha is null || entrada.Senha.Length < 6)
+        return Results.BadRequest("A senha deve ter pelo menos 6 caracteres.");
+    if (await db.Usuarios.AnyAsync(u => u.Email == email))
+        return Results.Conflict("Este e-mail já está cadastrado.");
+
+    var primeiroUsuario = !await db.Usuarios.AnyAsync();
+
+    var usuario = new Usuario { Email = email };
+    usuario.SenhaHash = hasher.HashPassword(usuario, entrada.Senha);
+    db.Usuarios.Add(usuario);
+    await db.SaveChangesAsync();
+
+    // Os dados criados antes do login existir passam a ser do primeiro usuário.
+    if (primeiroUsuario)
+    {
+        await db.Categorias.Where(c => c.UsuarioId == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.UsuarioId, usuario.Id));
+        await db.Transacoes.Where(t => t.UsuarioId == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.UsuarioId, usuario.Id));
+    }
+
+    await Entrar(http, usuario);
+    return Results.Created("/auth/eu", new { usuario.Id, usuario.Email });
+});
+
+app.MapPost("/auth/login", async (Credenciais entrada, AppDbContext db, HttpContext http) =>
+{
+    var email = entrada.Email?.Trim().ToLowerInvariant() ?? "";
+    var usuario = await db.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+
+    if (usuario is null || entrada.Senha is null ||
+        hasher.VerifyHashedPassword(usuario, usuario.SenhaHash, entrada.Senha) == PasswordVerificationResult.Failed)
+        return Results.Json("E-mail ou senha incorretos.", statusCode: StatusCodes.Status401Unauthorized);
+
+    await Entrar(http, usuario);
+    return Results.Ok(new { usuario.Id, usuario.Email });
+});
+
+app.MapPost("/auth/logout", async (HttpContext http) =>
+{
+    await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    return Results.NoContent();
+});
+
+app.MapGet("/auth/eu", (ClaimsPrincipal user) =>
+    new { Id = UsuarioId(user), Email = user.FindFirstValue(ClaimTypes.Email) })
+    .RequireAuthorization();
+
+// Daqui para baixo, todas as rotas exigem login.
+var rotas = app.MapGroup("").RequireAuthorization();
+
 // Categorias
-app.MapGet("/categorias", async (AppDbContext db) =>
-    await db.Categorias.OrderBy(c => c.Nome).ToListAsync());
+rotas.MapGet("/categorias", async (ClaimsPrincipal user, AppDbContext db) =>
+{
+    var usuarioId = UsuarioId(user);
+    return await db.Categorias
+        .Where(c => c.UsuarioId == usuarioId)
+        .OrderBy(c => c.Nome)
+        .ToListAsync();
+});
 
-app.MapGet("/categorias/{id}", async (int id, AppDbContext db) =>
-    await db.Categorias.FindAsync(id) is Categoria categoria
+rotas.MapGet("/categorias/{id}", async (int id, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var usuarioId = UsuarioId(user);
+    return await db.Categorias.FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId) is Categoria categoria
         ? Results.Ok(categoria)
-        : Results.NotFound());
+        : Results.NotFound();
+});
 
-app.MapPost("/categorias", async (Categoria entrada, AppDbContext db) =>
+rotas.MapPost("/categorias", async (Categoria entrada, ClaimsPrincipal user, AppDbContext db) =>
 {
     if (string.IsNullOrWhiteSpace(entrada.Nome))
         return Results.BadRequest("O nome da categoria é obrigatório.");
 
-    var categoria = new Categoria { Nome = entrada.Nome.Trim() };
+    var categoria = new Categoria { Nome = entrada.Nome.Trim(), UsuarioId = UsuarioId(user) };
     db.Categorias.Add(categoria);
     await db.SaveChangesAsync();
     return Results.Created($"/categorias/{categoria.Id}", categoria);
 });
 
-app.MapPut("/categorias/{id}", async (int id, Categoria entrada, AppDbContext db) =>
+rotas.MapPut("/categorias/{id}", async (int id, Categoria entrada, ClaimsPrincipal user, AppDbContext db) =>
 {
     if (string.IsNullOrWhiteSpace(entrada.Nome))
         return Results.BadRequest("O nome da categoria é obrigatório.");
 
-    var categoria = await db.Categorias.FindAsync(id);
+    var usuarioId = UsuarioId(user);
+    var categoria = await db.Categorias.FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId);
     if (categoria is null)
         return Results.NotFound();
 
@@ -69,9 +167,10 @@ app.MapPut("/categorias/{id}", async (int id, Categoria entrada, AppDbContext db
     return Results.Ok(categoria);
 });
 
-app.MapDelete("/categorias/{id}", async (int id, AppDbContext db) =>
+rotas.MapDelete("/categorias/{id}", async (int id, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var categoria = await db.Categorias.FindAsync(id);
+    var usuarioId = UsuarioId(user);
+    var categoria = await db.Categorias.FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId);
     if (categoria is null)
         return Results.NotFound();
 
@@ -84,9 +183,9 @@ app.MapDelete("/categorias/{id}", async (int id, AppDbContext db) =>
 });
 
 // Transações
-app.MapGet("/transacoes", async (string? mes, AppDbContext db) =>
+rotas.MapGet("/transacoes", async (string? mes, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var consulta = FiltrarPorMes(db.Transacoes.Include(t => t.Categoria), mes);
+    var consulta = FiltrarPorMes(DoUsuario(db.Transacoes.Include(t => t.Categoria), user), mes);
     if (consulta is null)
         return Results.BadRequest(MesInvalido);
 
@@ -96,18 +195,19 @@ app.MapGet("/transacoes", async (string? mes, AppDbContext db) =>
         .ToListAsync());
 });
 
-app.MapGet("/transacoes/{id}", async (int id, AppDbContext db) =>
-    await db.Transacoes.Include(t => t.Categoria).FirstOrDefaultAsync(t => t.Id == id) is Transacao transacao
+rotas.MapGet("/transacoes/{id}", async (int id, ClaimsPrincipal user, AppDbContext db) =>
+    await DoUsuario(db.Transacoes.Include(t => t.Categoria), user).FirstOrDefaultAsync(t => t.Id == id) is Transacao transacao
         ? Results.Ok(transacao)
         : Results.NotFound());
 
-app.MapPost("/transacoes", async (Transacao entrada, AppDbContext db) =>
+rotas.MapPost("/transacoes", async (Transacao entrada, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var erro = await ValidarTransacao(entrada, db);
+    var usuarioId = UsuarioId(user);
+    var erro = await ValidarTransacao(entrada, usuarioId, db);
     if (erro is not null)
         return Results.BadRequest(erro);
 
-    var transacao = new Transacao();
+    var transacao = new Transacao { UsuarioId = usuarioId };
     CopiarCampos(entrada, transacao);
     db.Transacoes.Add(transacao);
     await db.SaveChangesAsync();
@@ -115,13 +215,14 @@ app.MapPost("/transacoes", async (Transacao entrada, AppDbContext db) =>
     return Results.Created($"/transacoes/{transacao.Id}", transacao);
 });
 
-app.MapPut("/transacoes/{id}", async (int id, Transacao entrada, AppDbContext db) =>
+rotas.MapPut("/transacoes/{id}", async (int id, Transacao entrada, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var transacao = await db.Transacoes.FindAsync(id);
+    var usuarioId = UsuarioId(user);
+    var transacao = await DoUsuario(db.Transacoes, user).FirstOrDefaultAsync(t => t.Id == id);
     if (transacao is null)
         return Results.NotFound();
 
-    var erro = await ValidarTransacao(entrada, db);
+    var erro = await ValidarTransacao(entrada, usuarioId, db);
     if (erro is not null)
         return Results.BadRequest(erro);
 
@@ -131,9 +232,9 @@ app.MapPut("/transacoes/{id}", async (int id, Transacao entrada, AppDbContext db
     return Results.Ok(transacao);
 });
 
-app.MapDelete("/transacoes/{id}", async (int id, AppDbContext db) =>
+rotas.MapDelete("/transacoes/{id}", async (int id, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var transacao = await db.Transacoes.FindAsync(id);
+    var transacao = await DoUsuario(db.Transacoes, user).FirstOrDefaultAsync(t => t.Id == id);
     if (transacao is null)
         return Results.NotFound();
 
@@ -143,9 +244,9 @@ app.MapDelete("/transacoes/{id}", async (int id, AppDbContext db) =>
 });
 
 // Saldo
-app.MapGet("/saldo", async (string? mes, AppDbContext db) =>
+rotas.MapGet("/saldo", async (string? mes, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var consulta = FiltrarPorMes(db.Transacoes, mes);
+    var consulta = FiltrarPorMes(DoUsuario(db.Transacoes, user), mes);
     if (consulta is null)
         return Results.BadRequest(MesInvalido);
 
@@ -160,9 +261,9 @@ app.MapGet("/saldo", async (string? mes, AppDbContext db) =>
 });
 
 // Gráfico: total de despesas por categoria, do maior para o menor
-app.MapGet("/despesas-por-categoria", async (string? mes, AppDbContext db) =>
+rotas.MapGet("/despesas-por-categoria", async (string? mes, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var consulta = FiltrarPorMes(db.Transacoes, mes);
+    var consulta = FiltrarPorMes(DoUsuario(db.Transacoes, user), mes);
     if (consulta is null)
         return Results.BadRequest(MesInvalido);
 
@@ -178,7 +279,30 @@ app.MapGet("/despesas-por-categoria", async (string? mes, AppDbContext db) =>
 
 app.Run();
 
-static async Task<string?> ValidarTransacao(Transacao entrada, AppDbContext db)
+// Id do usuário logado, guardado no cookie no momento do login.
+static int UsuarioId(ClaimsPrincipal user) =>
+    int.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+// Só as transações do usuário logado.
+static IQueryable<Transacao> DoUsuario(IQueryable<Transacao> consulta, ClaimsPrincipal user)
+{
+    var usuarioId = UsuarioId(user);
+    return consulta.Where(t => t.UsuarioId == usuarioId);
+}
+
+// Cria o cookie de login.
+static async Task Entrar(HttpContext http, Usuario usuario)
+{
+    var claims = new[]
+    {
+        new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
+        new Claim(ClaimTypes.Email, usuario.Email),
+    };
+    var identidade = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+    await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identidade));
+}
+
+static async Task<string?> ValidarTransacao(Transacao entrada, int usuarioId, AppDbContext db)
 {
     if (string.IsNullOrWhiteSpace(entrada.Descricao))
         return "A descrição é obrigatória.";
@@ -188,7 +312,7 @@ static async Task<string?> ValidarTransacao(Transacao entrada, AppDbContext db)
         return "A data é obrigatória.";
     if (!Enum.IsDefined(entrada.Tipo))
         return "O tipo deve ser Receita ou Despesa.";
-    if (!await db.Categorias.AnyAsync(c => c.Id == entrada.CategoriaId))
+    if (!await db.Categorias.AnyAsync(c => c.Id == entrada.CategoriaId && c.UsuarioId == usuarioId))
         return "Categoria não encontrada.";
     return null;
 }
@@ -214,3 +338,5 @@ static void CopiarCampos(Transacao origem, Transacao destino)
     destino.Tipo = origem.Tipo;
     destino.CategoriaId = origem.CategoriaId;
 }
+
+record Credenciais(string? Email, string? Senha);
