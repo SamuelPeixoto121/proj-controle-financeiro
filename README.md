@@ -4,7 +4,7 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 
 ## Funcionalidades
 
-- **Login**: cada pessoa cria a própria conta (e-mail e senha) e só vê os próprios dados
+- **Login**: cada pessoa cria a própria conta (e-mail e senha) e só vê os próprios dados, e pode trocar a senha depois
 - Cadastrar, editar e excluir **transações** (receitas e despesas), com descrição, valor, data e categoria
 - **Transações recorrentes**: ao criar, dá para repetir a mesma transação por até 60 meses (por exemplo, o aluguel do ano todo de uma vez)
 - Cadastrar, editar e excluir **categorias** (não é possível excluir uma categoria que tenha transações)
@@ -95,7 +95,7 @@ Abra **http://localhost:5173** no navegador e clique em **Criar conta**. A API p
 
 O login usa um cookie de sessão (`HttpOnly`), que o navegador envia sozinho em cada requisição.
 
-Para dificultar a descoberta de senhas por tentativa e erro, `/auth/cadastro` e `/auth/login` aceitam juntas **até 5 tentativas por minuto de cada IP**. A partir da 6ª, respondem **429** até o minuto virar. O contador fica na memória e zera quando a API reinicia.
+Para dificultar a descoberta de senhas por tentativa e erro, `/auth/cadastro`, `/auth/login` e `/auth/trocar-senha` aceitam juntas **até 5 tentativas por minuto de cada IP**. A partir da 6ª, respondem **429** até o minuto virar. O contador fica na memória e zera quando a API reinicia.
 
 | Método | Rota | Descrição |
 |---|---|---|
@@ -103,6 +103,7 @@ Para dificultar a descoberta de senhas por tentativa e erro, `/auth/cadastro` e 
 | POST | `/auth/login` | Entra com e-mail e senha |
 | POST | `/auth/logout` | Sai |
 | GET | `/auth/eu` | Mostra quem está logado (401 se ninguém) |
+| POST | `/auth/trocar-senha` | Troca a senha de quem está logado (`{ "senhaAtual": "...", "novaSenha": "..." }`) |
 
 As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os dados do usuário logado.
 
@@ -155,6 +156,7 @@ proj-controle-financeiro/
         ├── csv.js           Geração e download do arquivo CSV
         ├── App.jsx          Página principal, filtro por mês e saldo
         ├── Login.jsx        Tela de entrar e criar conta
+        ├── TrocarSenha.jsx  Formulário de troca de senha
         ├── ResumoMensal.jsx Resumo mês a mês (gráfico e tabela)
         ├── MetasDoMes.jsx   Progresso das metas de gasto do mês
         ├── DespesasPorCategoria.jsx  Gráfico de despesas por categoria

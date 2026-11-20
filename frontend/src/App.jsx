@@ -7,6 +7,7 @@ import Login from './Login.jsx'
 import MetasDoMes from './MetasDoMes.jsx'
 import ResumoMensal from './ResumoMensal.jsx'
 import Transacoes from './Transacoes.jsx'
+import TrocarSenha from './TrocarSenha.jsx'
 
 function App() {
   // undefined = ainda verificando, null = ninguém logado, objeto = usuário logado
@@ -40,10 +41,16 @@ function App() {
       .catch((e) => setErro(e.message))
   }, [usuario, atualizacao, mes])
 
+  // Formulário de troca de senha aberto? E o aviso "Senha alterada."
+  const [trocandoSenha, setTrocandoSenha] = useState(false)
+  const [aviso, setAviso] = useState('')
+
   async function sair() {
     await api('/auth/logout', { method: 'POST' }).catch(() => {})
     setSaldo(null)
     setErro('')
+    setTrocandoSenha(false)
+    setAviso('')
     setUsuario(null)
   }
 
@@ -55,8 +62,27 @@ function App() {
       <div className="linha topo">
         <h1>Controle Financeiro</h1>
         <span className="usuario">{usuario.email}</span>
+        <button
+          onClick={() => {
+            setTrocandoSenha(!trocandoSenha)
+            setAviso('')
+          }}
+        >
+          Trocar senha
+        </button>
         <button onClick={sair}>Sair</button>
       </div>
+
+      {trocandoSenha && (
+        <TrocarSenha
+          aoTrocar={() => {
+            setTrocandoSenha(false)
+            setAviso('Senha alterada.')
+          }}
+          aoCancelar={() => setTrocandoSenha(false)}
+        />
+      )}
+      {aviso && <p className="aviso">{aviso}</p>}
 
       <div className="linha filtro">
         <label htmlFor="mes">Mês:</label>

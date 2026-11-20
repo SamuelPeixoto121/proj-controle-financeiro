@@ -131,6 +131,26 @@ app.MapPost("/auth/logout", async (HttpContext http) =>
     return Results.NoContent();
 });
 
+// Trocar a senha: precisa estar logado e informar a senha atual.
+app.MapPost("/auth/trocar-senha", async (TrocaDeSenha entrada, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var usuario = await db.Usuarios.FindAsync(UsuarioId(user));
+    if (usuario is null)
+        return Results.Unauthorized();
+
+    if (entrada.SenhaAtual is null ||
+        hasher.VerifyHashedPassword(usuario, usuario.SenhaHash, entrada.SenhaAtual) == PasswordVerificationResult.Failed)
+        return Results.BadRequest("Senha atual incorreta.");
+    if (entrada.NovaSenha is null || entrada.NovaSenha.Length < 6)
+        return Results.BadRequest("A nova senha deve ter pelo menos 6 caracteres.");
+    if (entrada.NovaSenha == entrada.SenhaAtual)
+        return Results.BadRequest("A nova senha deve ser diferente da atual.");
+
+    usuario.SenhaHash = hasher.HashPassword(usuario, entrada.NovaSenha);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+}).RequireAuthorization().RequireRateLimiting("login");
+
 app.MapGet("/auth/eu", (ClaimsPrincipal user) =>
     new { Id = UsuarioId(user), Email = user.FindFirstValue(ClaimTypes.Email) })
     .RequireAuthorization();
@@ -436,3 +456,4 @@ static void CopiarCampos(Transacao origem, Transacao destino)
 }
 
 record Credenciais(string? Email, string? Senha);
+record TrocaDeSenha(string? SenhaAtual, string? NovaSenha);
