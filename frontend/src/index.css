@@ -128,6 +128,19 @@ button {
   width: 60px;
 }
 
+/* "Aplicar também aos meses seguintes" ao editar uma série */
+.seguintes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Marca ↻ das transações de série */
+.serie {
+  color: #666;
+  cursor: help;
+}
+
 /* Linha de filtros da lista de transações */
 .filtros {
   margin-top: 16px;

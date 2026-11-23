@@ -66,6 +66,9 @@ namespace ControleFinanceiro.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<Guid?>("SerieId")
+                        .HasColumnType("char(36)");
+
                     b.Property<int>("Tipo")
                         .HasColumnType("int");
 

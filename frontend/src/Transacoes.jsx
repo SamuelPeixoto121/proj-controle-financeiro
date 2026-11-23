@@ -19,6 +19,9 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
   const [erro, setErro] = useState('')
   // Quantos meses repetir ao criar (1 = só este mês)
   const [repetir, setRepetir] = useState('1')
+  // Editando uma transação de série? E aplicar a mudança aos meses seguintes?
+  const [editandoSerie, setEditandoSerie] = useState(false)
+  const [aplicarSeguintes, setAplicarSeguintes] = useState(false)
   // Filtros da lista (só escondem linhas; não chamam a API)
   const [busca, setBusca] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('')
@@ -65,6 +68,8 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
     setEditandoId(null)
     setFormulario(formularioVazio())
     setRepetir('1')
+    setEditandoSerie(false)
+    setAplicarSeguintes(false)
     setErro('')
   }
 
@@ -78,7 +83,8 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
     }
     try {
       if (editandoId) {
-        await api(`/transacoes/${editandoId}`, { method: 'PUT', body: corpo })
+        const seguintes = aplicarSeguintes ? '?seguintes=true' : ''
+        await api(`/transacoes/${editandoId}${seguintes}`, { method: 'PUT', body: corpo })
       } else {
         await api(`/transacoes?repetir=${repetir}`, { method: 'POST', body: corpo })
       }
@@ -98,15 +104,21 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
       tipo: transacao.tipo,
       categoriaId: String(transacao.categoriaId),
     })
+    setEditandoSerie(transacao.serieId != null)
+    setAplicarSeguintes(false)
     setErro('')
   }
 
   async function excluir(transacao) {
     if (!confirm(`Excluir a transação "${transacao.descricao}"?`)) return
+    // Se for de uma série, pergunta se exclui também os meses seguintes.
+    const seguintes =
+      transacao.serieId != null &&
+      confirm('Excluir também os meses seguintes desta série?\n\nOK = sim, Cancelar = só esta')
     setErro('')
     try {
-      await api(`/transacoes/${transacao.id}`, { method: 'DELETE' })
-      if (transacao.id === editandoId) cancelarEdicao()
+      await api(`/transacoes/${transacao.id}${seguintes ? '?seguintes=true' : ''}`, { method: 'DELETE' })
+      if (seguintes || transacao.id === editandoId) cancelarEdicao()
       aoAlterar()
     } catch (e) {
       setErro(e.message)
@@ -158,6 +170,16 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
               required
             />
             {repetir === '1' ? 'mês' : 'meses'}
+          </label>
+        )}
+        {editandoSerie && (
+          <label className="seguintes">
+            <input
+              type="checkbox"
+              checked={aplicarSeguintes}
+              onChange={(e) => setAplicarSeguintes(e.target.checked)}
+            />
+            Aplicar também aos meses seguintes desta série
           </label>
         )}
         <button type="submit">{editandoId ? 'Salvar' : 'Adicionar'}</button>
@@ -228,7 +250,15 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
                 {filtradas.map((transacao) => (
                   <tr key={transacao.id}>
                     <td>{formatarData(transacao.data)}</td>
-                    <td>{transacao.descricao}</td>
+                    <td>
+                      {transacao.descricao}
+                      {transacao.serieId && (
+                        <span className="serie" title="Faz parte de uma série repetida">
+                          {' '}
+                          ↻
+                        </span>
+                      )}
+                    </td>
                     <td>{transacao.categoria?.nome}</td>
                     <td>{transacao.tipo}</td>
                     <td className={`valor ${transacao.tipo === 'Receita' ? 'receita' : 'despesa'}`}>

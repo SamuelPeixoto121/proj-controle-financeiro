@@ -6,7 +6,7 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 
 - **Login**: cada pessoa cria a própria conta (e-mail e senha) e só vê os próprios dados, e pode trocar a senha depois
 - Cadastrar, editar e excluir **transações** (receitas e despesas), com descrição, valor, data e categoria
-- **Transações recorrentes**: ao criar, dá para repetir a mesma transação por até 60 meses (por exemplo, o aluguel do ano todo de uma vez)
+- **Transações recorrentes**: ao criar, dá para repetir a mesma transação por até 60 meses (por exemplo, o aluguel do ano todo de uma vez). As repetições formam uma **série** (marcada com ↻): ao editar ou excluir uma delas, dá para aplicar a mudança também aos meses seguintes
 - Cadastrar, editar e excluir **categorias** (não é possível excluir uma categoria que tenha transações)
 - **Metas de gasto por categoria**: um limite mensal opcional para cada categoria, com barra de progresso e aviso de "perto do limite" (80%) e "estourou" (acima de 100%)
 - **Saldo total**: soma das receitas, soma das despesas e saldo (receitas − despesas), atualizado a cada alteração
@@ -117,8 +117,8 @@ As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os da
 | GET | `/transacoes` | Lista as transações, da mais recente para a mais antiga |
 | GET | `/transacoes/{id}` | Busca uma transação |
 | POST | `/transacoes` | Cria uma transação. Com `?repetir=12`, cria a mesma transação em 12 meses seguidos, de 1 a 60 (o dia 31 cai no último dia dos meses mais curtos) |
-| PUT | `/transacoes/{id}` | Edita uma transação |
-| DELETE | `/transacoes/{id}` | Exclui uma transação |
+| PUT | `/transacoes/{id}` | Edita uma transação. Com `?seguintes=true`, aplica descrição, valor, tipo e categoria também às transações seguintes da mesma série |
+| DELETE | `/transacoes/{id}` | Exclui uma transação. Com `?seguintes=true`, exclui também as seguintes da mesma série |
 | GET | `/saldo` | Total de receitas, total de despesas e saldo |
 | GET | `/despesas-por-categoria` | Total de despesas de cada categoria, do maior para o menor |
 | GET | `/metas?mes=AAAA-MM` | Para cada categoria com meta: a meta e o gasto do mês (o mês é obrigatório) |

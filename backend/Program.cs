@@ -250,9 +250,12 @@ rotas.MapPost("/transacoes", async (Transacao entrada, string? repetir, ClaimsPr
     if (erro is not null)
         return Results.BadRequest(erro);
 
+    // Repetindo, todas as cópias ganham a mesma marca de série.
+    Guid? serieId = meses > 1 ? Guid.NewGuid() : null;
+
     var transacoes = Enumerable.Range(0, meses).Select(i =>
     {
-        var copia = new Transacao { UsuarioId = usuarioId };
+        var copia = new Transacao { UsuarioId = usuarioId, SerieId = serieId };
         CopiarCampos(entrada, copia);
         // Sempre a partir da data original: 31/01 vira 28/02 (ou 29/02) e depois 31/03.
         copia.Data = entrada.Data.AddMonths(i);
@@ -268,7 +271,8 @@ rotas.MapPost("/transacoes", async (Transacao entrada, string? repetir, ClaimsPr
     return Results.Created($"/transacoes/{transacao.Id}", transacao);
 });
 
-rotas.MapPut("/transacoes/{id}", async (int id, Transacao entrada, ClaimsPrincipal user, AppDbContext db) =>
+// ?seguintes=true também altera as transações seguintes da mesma série (menos a data).
+rotas.MapPut("/transacoes/{id}", async (int id, Transacao entrada, bool? seguintes, ClaimsPrincipal user, AppDbContext db) =>
 {
     var usuarioId = UsuarioId(user);
     var transacao = await DoUsuario(db.Transacoes, user).FirstOrDefaultAsync(t => t.Id == id);
@@ -279,19 +283,36 @@ rotas.MapPut("/transacoes/{id}", async (int id, Transacao entrada, ClaimsPrincip
     if (erro is not null)
         return Results.BadRequest(erro);
 
+    var dataOriginal = transacao.Data;
     CopiarCampos(entrada, transacao);
+
+    if (seguintes == true && transacao.SerieId is not null)
+    {
+        foreach (var proxima in await SeguintesDaSerie(db, user, transacao, dataOriginal))
+        {
+            proxima.Descricao = transacao.Descricao;
+            proxima.Valor = transacao.Valor;
+            proxima.Tipo = transacao.Tipo;
+            proxima.CategoriaId = transacao.CategoriaId;
+        }
+    }
+
+    // Um único SaveChanges: grava todas ou nenhuma.
     await db.SaveChangesAsync();
     await db.Entry(transacao).Reference(t => t.Categoria).LoadAsync();
     return Results.Ok(transacao);
 });
 
-rotas.MapDelete("/transacoes/{id}", async (int id, ClaimsPrincipal user, AppDbContext db) =>
+// ?seguintes=true também exclui as transações seguintes da mesma série.
+rotas.MapDelete("/transacoes/{id}", async (int id, bool? seguintes, ClaimsPrincipal user, AppDbContext db) =>
 {
     var transacao = await DoUsuario(db.Transacoes, user).FirstOrDefaultAsync(t => t.Id == id);
     if (transacao is null)
         return Results.NotFound();
 
     db.Transacoes.Remove(transacao);
+    if (seguintes == true && transacao.SerieId is not null)
+        db.Transacoes.RemoveRange(await SeguintesDaSerie(db, user, transacao, transacao.Data));
     await db.SaveChangesAsync();
     return Results.NoContent();
 });
@@ -396,6 +417,12 @@ static IQueryable<Transacao> DoUsuario(IQueryable<Transacao> consulta, ClaimsPri
     var usuarioId = UsuarioId(user);
     return consulta.Where(t => t.UsuarioId == usuarioId);
 }
+
+// As outras transações da mesma série, da data informada em diante.
+static async Task<List<Transacao>> SeguintesDaSerie(AppDbContext db, ClaimsPrincipal user, Transacao transacao, DateTime aPartirDe) =>
+    await DoUsuario(db.Transacoes, user)
+        .Where(t => t.SerieId == transacao.SerieId && t.Id != transacao.Id && t.Data >= aPartirDe)
+        .ToListAsync();
 
 // Cria o cookie de login.
 static async Task Entrar(HttpContext http, Usuario usuario)

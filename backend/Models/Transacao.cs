@@ -17,6 +17,9 @@ public class Transacao
     public int CategoriaId { get; set; }
     public Categoria? Categoria { get; set; }
 
+    // Mesma série = criadas juntas com "Repetir por N meses". Vazio = transação avulsa.
+    public Guid? SerieId { get; set; }
+
     // Dono da transação. Fica vazio só nos dados antigos, até o primeiro cadastro.
     [JsonIgnore]
     public int? UsuarioId { get; set; }
