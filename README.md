@@ -13,6 +13,7 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 - **Metas de gasto por categoria**: um limite mensal opcional para cada categoria, com barra de progresso e aviso de "perto do limite" (80%) e "estourou" (acima de 100%)
 - **Saldo total**: soma das receitas, soma das despesas e saldo (receitas − despesas), atualizado a cada alteração
 - **Filtro por mês**: ver as transações e o saldo de um mês específico, ou de todos os meses
+- **Saldo real**: o dinheiro que se tem agora, contando só o que já foi pago e recebido (o saldo e o acumulado são previsões, que contam também o que está pendente)
 - **Saldo acumulado**: quanto se tem no fim de cada mês, somando o que sobrou (ou faltou) dos meses anteriores (no resumo do topo e no resumo mês a mês)
 - **Busca e filtros na lista de transações**: por descrição (sem diferenciar maiúsculas e acentos), categoria e tipo, com a soma do que está filtrado
 - **Exportar para CSV**: baixa as transações que estão na tabela (respeitando o mês e os filtros), num formato que o Excel em português abre direto
@@ -126,7 +127,7 @@ As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os da
 | PUT | `/transacoes/{id}/pago` | Marca só a situação: `{ "pago": true }` (paga/recebida) ou `false` (pendente) |
 | GET | `/pendentes?mes=AAAA-MM` | Transações pendentes até o fim do mês (inclusive as atrasadas de antes), com os totais a pagar e a receber |
 | DELETE | `/transacoes/{id}` | Exclui uma transação. Com `?seguintes=true`, exclui também as seguintes da mesma série |
-| GET | `/saldo` | Total de receitas, total de despesas e saldo. Com `?mes=`, também o `acumulado` (saldo de tudo até o fim do mês) |
+| GET | `/saldo` | Total de receitas, total de despesas e saldo. Com `?mes=`, também o `acumulado` (saldo de tudo até o fim do mês). Sempre traz o `saldoReal` (só o que já foi pago e recebido, de todas as datas) |
 | GET | `/despesas-por-categoria` | Total de despesas de cada categoria, do maior para o menor |
 | GET | `/metas?mes=AAAA-MM` | Para cada categoria com meta: a meta e o gasto do mês (o mês é obrigatório) |
 | GET | `/resumo-mensal?ano=AAAA` | Receitas, despesas, saldo e acumulado de cada um dos 12 meses do ano (sem `ano`, usa o ano atual) |

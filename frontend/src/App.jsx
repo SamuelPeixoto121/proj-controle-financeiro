@@ -169,13 +169,24 @@ function App() {
                     titulo="Acumulado"
                     valor={saldo.acumulado}
                     classe={corDoSaldo(saldo.acumulado)}
-                    detalhe={`O que você tem no fim de ${formatarMes(mes)}`}
+                    detalhe={`Previsão para o fim de ${formatarMes(mes)}`}
                   />
                 )}
+                <Cartao
+                  titulo="Saldo real"
+                  valor={saldo.saldoReal}
+                  classe={corDoSaldo(saldo.saldoReal)}
+                  detalhe="Só o que já foi pago e recebido"
+                />
               </div>
             )}
 
-            <ContasDoMes mes={mes} atualizacao={atualizacao} aoAlterar={aoAlterar} />
+            <ContasDoMes
+              mes={mes}
+              atualizacao={atualizacao}
+              aoAlterar={aoAlterar}
+              saldoReal={saldo?.saldoReal}
+            />
             <div className="grade-2">
               <MetasDoMes mes={mes} atualizacao={atualizacao} />
               <DespesasPorCategoria mes={mes} atualizacao={atualizacao} />

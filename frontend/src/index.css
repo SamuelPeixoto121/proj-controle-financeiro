@@ -362,6 +362,10 @@ button.link:hover:not(:disabled) {
   color: var(--texto-suave);
 }
 
+.depois-de-tudo {
+  margin: 0 0 8px;
+}
+
 /* =========================================================
    5. Formulários
    ========================================================= */
@@ -902,6 +906,11 @@ tfoot th {
 
   .cartao-valor {
     font-size: 1.3rem;
+  }
+
+  /* Número ímpar de cartões: o último ocupa a linha inteira */
+  .cartao:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 
   /* Cabeçalho: título numa linha; e-mail e botões na linha de baixo */

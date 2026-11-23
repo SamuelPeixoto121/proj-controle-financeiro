@@ -407,13 +407,19 @@ rotas.MapGet("/saldo", async (string? mes, ClaimsPrincipal user, AppDbContext db
         .Where(t => t.Tipo == TipoTransacao.Despesa)
         .SumAsync(t => t.Valor);
 
-    if (mes is null)
-        return Results.Ok(new { receitas, despesas, saldo = receitas - despesas });
+    // Saldo real: o dinheiro que se tem agora = tudo o que já foi recebido − tudo o que já foi pago
+    // (de todas as datas; não depende do mês escolhido).
+    var saldoReal = await DoUsuario(db.Transacoes, user)
+        .Where(t => t.Pago)
+        .SumAsync(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor);
 
-    // Com mês: também o acumulado, ou seja, o saldo de tudo até o fim desse mês.
+    if (mes is null)
+        return Results.Ok(new { receitas, despesas, saldo = receitas - despesas, saldoReal });
+
+    // Com mês: também o acumulado, ou seja, o saldo de tudo até o fim desse mês (previsão).
     var fimDoMes = DateTime.ParseExact(mes, "yyyy-MM", null).AddMonths(1);
     var acumulado = await SaldoAntesDe(DoUsuario(db.Transacoes, user), fimDoMes);
-    return Results.Ok(new { receitas, despesas, saldo = receitas - despesas, acumulado });
+    return Results.Ok(new { receitas, despesas, saldo = receitas - despesas, acumulado, saldoReal });
 });
 
 // Gráfico: total de despesas por categoria, do maior para o menor

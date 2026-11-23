@@ -3,7 +3,7 @@ import { api } from './api.js'
 import { formatarData, formatarReais } from './formatar.js'
 
 // Contas pendentes do mês (e as atrasadas de antes), com botão para marcar como paga/recebida.
-function ContasDoMes({ mes, atualizacao, aoAlterar }) {
+function ContasDoMes({ mes, atualizacao, aoAlterar, saldoReal }) {
   const [dados, setDados] = useState(null)
   const [erro, setErro] = useState('')
 
@@ -36,6 +36,16 @@ function ContasDoMes({ mes, atualizacao, aoAlterar }) {
       </div>
 
       {erro && <p className="erro">{erro}</p>}
+
+      {/* Como fica o saldo real quando tudo o que está pendente aqui for pago e recebido */}
+      {dados && saldoReal !== undefined && dados.transacoes.length > 0 && (
+        <p className="texto-suave depois-de-tudo">
+          Depois de pagar e receber as contas abaixo, o saldo real fica em{' '}
+          <strong className={saldoReal - dados.aPagar + dados.aReceber < 0 ? 'despesa' : 'receita'}>
+            {formatarReais(saldoReal - dados.aPagar + dados.aReceber)}
+          </strong>
+        </p>
+      )}
       {dados && dados.transacoes.length === 0 && <p className="vazio">Tudo em dia ✔</p>}
 
       {dados && dados.transacoes.length > 0 && (
