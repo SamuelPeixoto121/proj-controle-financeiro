@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Threading.RateLimiting;
 using ControleFinanceiro.Data;
 using ControleFinanceiro.Models;
@@ -239,18 +240,34 @@ rotas.MapGet("/transacoes/{id}", async (int id, ClaimsPrincipal user, AppDbConte
         : Results.NotFound());
 
 // ?repetir=12 cria a mesma transação em 12 meses seguidos (sem o parâmetro, cria só 1).
-rotas.MapPost("/transacoes", async (Transacao entrada, string? repetir, ClaimsPrincipal user, AppDbContext db) =>
+// ?parcelas=10 divide o valor total em 10 parcelas mensais: "Geladeira (1/10)" ... "(10/10)".
+rotas.MapPost("/transacoes", async (Transacao entrada, string? repetir, string? parcelas, ClaimsPrincipal user, AppDbContext db) =>
 {
+    if (repetir is not null && parcelas is not null)
+        return Results.BadRequest("Escolha repetir ou parcelar, não os dois.");
+
     var meses = 1;
     if (repetir is not null && (!int.TryParse(repetir, out meses) || meses < 1 || meses > 60))
         return Results.BadRequest("Repetir deve ser um número de meses entre 1 e 60.");
+
+    var parcelado = parcelas is not null;
+    if (parcelado && (!int.TryParse(parcelas, out meses) || meses < 2 || meses > 60))
+        return Results.BadRequest("O número de parcelas deve ser entre 2 e 60.");
 
     var usuarioId = UsuarioId(user);
     var erro = await ValidarTransacao(entrada, usuarioId, db);
     if (erro is not null)
         return Results.BadRequest(erro);
 
-    // Repetindo, todas as cópias ganham a mesma marca de série.
+    // Parcelas: todas com o mesmo valor, e a 1ª fica com os centavos que sobram
+    // (R$ 100 em 3x = 33,34 + 33,33 + 33,33), para a soma dar exatamente o total.
+    var total = Math.Round(entrada.Valor, 2);
+    var valorParcela = parcelado ? Math.Floor(total * 100 / meses) / 100 : total;
+    if (parcelado && valorParcela < 0.01m)
+        return Results.BadRequest("O valor total é pequeno demais para tantas parcelas (cada uma precisa ter pelo menos R$ 0,01).");
+    var primeiraParcela = parcelado ? total - valorParcela * (meses - 1) : total;
+
+    // Repetindo ou parcelando, todas as cópias ganham a mesma marca de série.
     Guid? serieId = meses > 1 ? Guid.NewGuid() : null;
 
     var transacoes = Enumerable.Range(0, meses).Select(i =>
@@ -259,6 +276,11 @@ rotas.MapPost("/transacoes", async (Transacao entrada, string? repetir, ClaimsPr
         CopiarCampos(entrada, copia);
         // Sempre a partir da data original: 31/01 vira 28/02 (ou 29/02) e depois 31/03.
         copia.Data = entrada.Data.AddMonths(i);
+        if (parcelado)
+        {
+            copia.Valor = i == 0 ? primeiraParcela : valorParcela;
+            copia.Descricao = $"{copia.Descricao} ({i + 1}/{meses})";
+        }
         return copia;
     }).ToList();
 
@@ -288,9 +310,14 @@ rotas.MapPut("/transacoes/{id}", async (int id, Transacao entrada, bool? seguint
 
     if (seguintes == true && transacao.SerieId is not null)
     {
+        // Parcelas: cada uma mantém a própria numeração "(x/y)" no fim da descrição.
+        var parcelaEditada = Regex.Match(transacao.Descricao, @"^(.*) \(\d+/\d+\)$");
         foreach (var proxima in await SeguintesDaSerie(db, user, transacao, dataOriginal))
         {
-            proxima.Descricao = transacao.Descricao;
+            var numeracao = Regex.Match(proxima.Descricao, @" \(\d+/\d+\)$");
+            proxima.Descricao = parcelaEditada.Success && numeracao.Success
+                ? parcelaEditada.Groups[1].Value + numeracao.Value
+                : transacao.Descricao;
             proxima.Valor = transacao.Valor;
             proxima.Tipo = transacao.Tipo;
             proxima.CategoriaId = transacao.CategoriaId;

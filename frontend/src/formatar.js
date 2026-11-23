@@ -21,3 +21,18 @@ export const NOMES_MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ag
 
 // "2026-11" -> "nov/2026"
 export const formatarMes = (mes) => `${NOMES_MESES[Number(mes.slice(5, 7)) - 1]}/${mes.slice(0, 4)}`
+
+// Prévia das parcelas, com a mesma conta da API (a 1ª fica com os centavos que sobram):
+// (100, 3) -> "3x: a 1ª de R$ 33,34 e 2x de R$ 33,33"   (1200, 10) -> "10x de R$ 120,00"
+export function previaDeParcelas(valorTotal, parcelas) {
+  const centavos = Math.round(Number(valorTotal) * 100)
+  const n = Number(parcelas)
+  if (!(centavos > 0) || !Number.isInteger(n) || n < 2 || n > 60) return ''
+  const base = Math.floor(centavos / n)
+  if (base < 1) return 'Valor pequeno demais para tantas parcelas.'
+  const primeira = centavos - base * (n - 1)
+  const reais = (c) => formatarReais(c / 100)
+  return primeira === base
+    ? `${n}x de ${reais(base)}`
+    : `${n}x: a 1ª de ${reais(primeira)} e ${n - 1}x de ${reais(base)}`
+}

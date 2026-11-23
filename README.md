@@ -6,6 +6,7 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 
 - **Login**: cada pessoa cria a própria conta (e-mail e senha) e só vê os próprios dados, e pode trocar a senha depois
 - Cadastrar, editar e excluir **transações** (receitas e despesas), com descrição, valor, data e categoria
+- **Compras parceladas**: ao criar, dá para parcelar o valor total em até 60x ("Geladeira (1/10)" ... "(10/10)", uma por mês). A 1ª parcela fica com os centavos que sobram, para a soma dar exatamente o total
 - **Transações recorrentes**: ao criar, dá para repetir a mesma transação por até 60 meses (por exemplo, o aluguel do ano todo de uma vez). As repetições formam uma **série** (marcada com ↻): ao editar ou excluir uma delas, dá para aplicar a mudança também aos meses seguintes
 - Cadastrar, editar e excluir **categorias** (não é possível excluir uma categoria que tenha transações)
 - **Metas de gasto por categoria**: um limite mensal opcional para cada categoria, com barra de progresso e aviso de "perto do limite" (80%) e "estourou" (acima de 100%)
@@ -119,7 +120,7 @@ As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os da
 | DELETE | `/categorias/{id}` | Exclui uma categoria (409 se tiver transações) |
 | GET | `/transacoes` | Lista as transações, da mais recente para a mais antiga |
 | GET | `/transacoes/{id}` | Busca uma transação |
-| POST | `/transacoes` | Cria uma transação. Com `?repetir=12`, cria a mesma transação em 12 meses seguidos, de 1 a 60 (o dia 31 cai no último dia dos meses mais curtos) |
+| POST | `/transacoes` | Cria uma transação. Com `?repetir=12`, cria a mesma transação em 12 meses seguidos, de 1 a 60 (o dia 31 cai no último dia dos meses mais curtos). Com `?parcelas=10`, divide o `valor` total em 10 parcelas mensais numeradas (de 2 a 60) |
 | PUT | `/transacoes/{id}` | Edita uma transação. Com `?seguintes=true`, aplica descrição, valor, tipo e categoria também às transações seguintes da mesma série |
 | DELETE | `/transacoes/{id}` | Exclui uma transação. Com `?seguintes=true`, exclui também as seguintes da mesma série |
 | GET | `/saldo` | Total de receitas, total de despesas e saldo. Com `?mes=`, também o `acumulado` (saldo de tudo até o fim do mês) |

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { baixarArquivo, gerarCsv } from './csv.js'
-import { formatarData, formatarReais, hoje, normalizar } from './formatar.js'
+import { formatarData, formatarReais, hoje, normalizar, previaDeParcelas } from './formatar.js'
 
 const formularioVazio = () => ({
   descricao: '',
@@ -17,8 +17,9 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
   const [formulario, setFormulario] = useState(formularioVazio)
   const [editandoId, setEditandoId] = useState(null)
   const [erro, setErro] = useState('')
-  // Quantos meses repetir ao criar (1 = só este mês)
-  const [repetir, setRepetir] = useState('1')
+  // Ao criar: só este mês, repetir todo mês ou parcelar o valor; e quantas vezes.
+  const [lancamento, setLancamento] = useState('unico')
+  const [vezes, setVezes] = useState('12')
   // Editando uma transação de série? E aplicar a mudança aos meses seguintes?
   const [editandoSerie, setEditandoSerie] = useState(false)
   const [aplicarSeguintes, setAplicarSeguintes] = useState(false)
@@ -36,6 +37,8 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
       })
       .catch((e) => setErro(e.message))
   }, [mes, atualizacao])
+
+  const previaParcelas = previaDeParcelas(formulario.valor, vezes)
 
   const termo = normalizar(busca.trim())
   const filtradas = transacoes.filter(
@@ -67,7 +70,8 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
   function cancelarEdicao() {
     setEditandoId(null)
     setFormulario(formularioVazio())
-    setRepetir('1')
+    setLancamento('unico')
+    setVezes('12')
     setEditandoSerie(false)
     setAplicarSeguintes(false)
     setErro('')
@@ -86,7 +90,8 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
         const seguintes = aplicarSeguintes ? '?seguintes=true' : ''
         await api(`/transacoes/${editandoId}${seguintes}`, { method: 'PUT', body: corpo })
       } else {
-        await api(`/transacoes?repetir=${repetir}`, { method: 'POST', body: corpo })
+        const extra = { unico: '', repetir: `?repetir=${vezes}`, parcelar: `?parcelas=${vezes}` }
+        await api(`/transacoes${extra[lancamento]}`, { method: 'POST', body: corpo })
       }
       cancelarEdicao()
       aoAlterar()
@@ -141,7 +146,7 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
             />
           </label>
           <label className="campo">
-            Valor (R$)
+            {!editandoId && lancamento === 'parcelar' ? 'Valor total (R$)' : 'Valor (R$)'}
             <input
               name="valor"
               type="number"
@@ -176,16 +181,29 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
           </label>
           {!editandoId && (
             <label className="campo">
-              Repetir por ({repetir === '1' ? 'mês' : 'meses'})
+              Lançamento
+              <select value={lancamento} onChange={(e) => setLancamento(e.target.value)}>
+                <option value="unico">Uma vez</option>
+                <option value="repetir">Repetir</option>
+                <option value="parcelar">Parcelar</option>
+              </select>
+            </label>
+          )}
+          {!editandoId && lancamento !== 'unico' && (
+            <label className="campo">
+              {lancamento === 'repetir' ? 'Quantos meses' : 'Parcelas'}
               <input
                 type="number"
-                min="1"
+                min={lancamento === 'repetir' ? 1 : 2}
                 max="60"
-                value={repetir}
-                onChange={(e) => setRepetir(e.target.value)}
+                value={vezes}
+                onChange={(e) => setVezes(e.target.value)}
                 required
               />
             </label>
+          )}
+          {!editandoId && lancamento === 'parcelar' && previaParcelas && (
+            <p className="previa-parcelas">{previaParcelas}</p>
           )}
           {editandoSerie && (
             <label className="seguintes">
