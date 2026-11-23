@@ -17,7 +17,7 @@ function DespesasPorCategoria({ mes, atualizacao }) {
   const maior = totais[0]?.total ?? 0 // a lista já vem do maior para o menor
 
   return (
-    <section>
+    <section className="card">
       <h2>Despesas por categoria</h2>
 
       {erro && <p className="erro">{erro}</p>}

@@ -1,180 +1,448 @@
+/* =========================================================
+   1. Cores e medidas (mude aqui para mudar no app todo)
+   ========================================================= */
+:root {
+  --fundo: #f3f5f8;
+  --superficie: #ffffff;
+  --borda: #e1e5ea;
+  --texto: #1f2933;
+  --texto-suave: #5f6b7a;
+
+  --principal: #2a78d6;
+  --principal-escuro: #1f5fae;
+  --principal-claro: #e8f1fc;
+
+  --receita: #1b7f3b;
+  --receita-claro: #e6f4ea;
+  --despesa: #b00020;
+  --despesa-claro: #fdecee;
+
+  /* Status das metas (sempre com ícone e texto ao lado) */
+  --status-bom: #0ca30c;
+  --status-alerta: #fab219;
+  --status-alerta-texto: #b07800;
+  --status-critico: #d03b3b;
+
+  --raio: 10px;
+  --sombra: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+/* =========================================================
+   2. Base
+   ========================================================= */
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  background: #f5f5f5;
-  color: #222;
+  background: var(--fundo);
+  color: var(--texto);
+  line-height: 1.4;
 }
 
 main {
-  max-width: 720px;
+  max-width: 1040px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 20px 16px 48px;
 }
 
-.resumo,
-.lista {
-  list-style: none;
-  padding: 0;
+h1 {
+  font-size: 1.3rem;
+  margin: 0;
 }
 
-.lista li {
-  padding: 8px 0;
-  border-bottom: 1px solid #ddd;
+h2 {
+  font-size: 1.1rem;
+  margin: 0 0 14px;
 }
 
-.linha {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.texto-suave,
+.vazio {
+  color: var(--texto-suave);
 }
 
-.linha span,
-.linha input {
-  flex: 1;
+.vazio {
+  margin: 8px 0;
 }
 
-.filtro input {
-  flex: 0 0 auto;
+.carregando {
+  color: var(--texto-suave);
+  text-align: center;
+  padding: 40px 16px;
 }
 
-/* Topo do painel: título, e-mail e botão Sair */
-.topo h1 {
-  flex: 1;
+.erro {
+  color: var(--despesa);
+  background: var(--despesa-claro);
+  padding: 8px 12px;
+  border-radius: 6px;
 }
 
-.topo .usuario {
-  flex: 0 1 auto;
-  color: #666;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.aviso {
+  color: var(--receita);
+  background: var(--receita-claro);
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.receita {
+  color: var(--receita);
+}
+
+.despesa {
+  color: var(--despesa);
+}
+
+/* =========================================================
+   3. Campos e botões
+   ========================================================= */
+input,
+select,
+button {
+  font: inherit;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--borda);
+  background: var(--superficie);
+  color: var(--texto);
+}
+
+input:focus,
+select:focus {
+  outline: 2px solid var(--principal-claro);
+  border-color: var(--principal);
+}
+
+/* Botão padrão: contorno (Editar, Cancelar, Limpar...) */
+button {
+  cursor: pointer;
+  border-color: #c9d0d8;
   white-space: nowrap;
 }
 
-/* Tela de login */
-.login {
-  max-width: 360px;
+button:hover:not(:disabled) {
+  background: #f0f2f5;
 }
 
-.login-formulario {
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Botão principal: azul (Adicionar, Salvar, Entrar) */
+button.principal {
+  background: var(--principal);
+  border-color: var(--principal);
+  color: #fff;
+  font-weight: 600;
+}
+
+button.principal:hover:not(:disabled) {
+  background: var(--principal-escuro);
+}
+
+/* Botão de perigo: Excluir */
+button.perigo {
+  color: var(--despesa);
+  border-color: #f1b5bd;
+}
+
+button.perigo:hover:not(:disabled) {
+  background: var(--despesa-claro);
+}
+
+/* Botão que parece link ("Criar conta") */
+button.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--principal);
+  text-decoration: underline;
+}
+
+button.link:hover:not(:disabled) {
+  background: none;
+}
+
+/* =========================================================
+   4. Estrutura: cabeçalho, abas, filtro de mês e cartões
+   ========================================================= */
+.cabecalho {
+  background: var(--superficie);
+  border-bottom: 1px solid var(--borda);
+}
+
+.cabecalho-conteudo {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 12px 16px;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.login-formulario label {
+.cabecalho h1 {
+  flex: 1;
+}
+
+.usuario {
+  color: var(--texto-suave);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+}
+
+/* Abas: Visão geral | Transações | Categorias */
+.abas {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--borda);
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.aba {
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 6px 6px 0 0;
+  background: none;
+  padding: 10px 16px;
+  color: var(--texto-suave);
+  font-weight: 600;
+}
+
+.aba.ativa {
+  color: var(--principal);
+  border-bottom-color: var(--principal);
+}
+
+.filtro-mes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.filtro-mes label {
+  font-weight: 600;
+}
+
+/* Cada seção fica num "card" branco */
+.card {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  min-width: 0; /* deixa a tabela rolar dentro do card em telas pequenas */
+}
+
+/* Duas colunas lado a lado (uma embaixo da outra no celular) */
+.grade-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.grade-2 .card {
+  margin-bottom: 0;
+}
+
+/* Cartões de números: Receitas, Despesas, Saldo, Acumulado */
+.cartoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.cartao {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-/* Troca de senha: mesmo estilo do login, num quadro abaixo do topo */
+.cartao-titulo {
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.cartao-valor {
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cartao-detalhe {
+  color: var(--texto-suave);
+}
+
+/* =========================================================
+   5. Formulários
+   ========================================================= */
+/* Formulário de transação: campos com rótulo em cima, lado a lado */
+.formulario {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.campo input,
+.campo select {
+  font-size: 1rem;
+  font-weight: normal;
+  width: 100%;
+  height: 40px;
+}
+
+.campo-largo {
+  grid-column: span 2;
+}
+
+.formulario-botoes {
+  display: flex;
+  gap: 8px;
+}
+
+.formulario-botoes button {
+  height: 40px;
+}
+
+/* "Aplicar também aos meses seguintes" ao editar uma série */
+.seguintes {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Formulários em coluna: login e troca de senha */
+.formulario-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.formulario-vertical label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.formulario-vertical input {
+  font-weight: normal;
+}
+
+.formulario-vertical small {
+  color: var(--texto-suave);
+}
+
 .trocar-senha {
-  max-width: 360px;
-  padding: 16px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: #fff;
+  max-width: 400px;
 }
 
 .trocar-senha h2 {
   margin: 0;
 }
 
-.aviso {
-  color: #1b7f3b;
+/* Tela de login: card no meio da tela */
+.login {
+  max-width: 400px;
+  margin: 8vh auto 0;
 }
 
-button.link {
-  background: none;
-  border: none;
-  padding: 0;
-  color: #2a78d6;
-  text-decoration: underline;
-  cursor: pointer;
+.login h1 {
+  margin-bottom: 8px;
 }
 
-input,
-button {
-  font: inherit;
-  padding: 6px 10px;
+/* Linha simples com itens lado a lado */
+.linha {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
-.erro {
-  color: #b00020;
+.linha input {
+  flex: 1;
+  min-width: 0;
 }
 
-.formulario {
+/* =========================================================
+   6. Lista de transações
+   ========================================================= */
+.filtros {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.formulario input[name='descricao'] {
-  flex: 1 1 200px;
-}
-
-.formulario input[name='valor'] {
-  width: 110px;
-}
-
-/* "Repetir por [ 12 ] meses" no formulário de transação */
-.repetir {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.repetir input {
-  width: 60px;
-}
-
-/* "Aplicar também aos meses seguintes" ao editar uma série */
-.seguintes {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* Marca ↻ das transações de série */
-.serie {
-  color: #666;
-  cursor: help;
-}
-
-/* Linha de filtros da lista de transações */
-.filtros {
-  margin-top: 16px;
+  margin-bottom: 8px;
 }
 
 .filtros input {
   flex: 1 1 200px;
 }
 
-.totais-filtro {
-  color: #666;
-}
-
-select {
-  font: inherit;
-  padding: 6px 10px;
+.tabela-rolagem {
+  overflow-x: auto;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 16px;
+  margin-top: 8px;
 }
 
 th,
 td {
   text-align: left;
-  padding: 8px 6px;
-  border-bottom: 1px solid #ddd;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--borda);
+}
+
+thead th {
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+tbody tr:hover,
+tbody tr.editando {
+  background: #f7f9fc;
+}
+
+tfoot th {
+  border-bottom: none;
 }
 
 .valor {
   text-align: right;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .acoes {
@@ -182,18 +450,103 @@ td {
   text-align: right;
 }
 
+.acoes button {
+  padding: 4px 10px;
+  margin-left: 4px;
+  font-size: 0.9rem;
+}
+
+/* Etiqueta colorida de Receita / Despesa */
+.etiqueta {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.etiqueta.receita {
+  background: var(--receita-claro);
+}
+
+.etiqueta.despesa {
+  background: var(--despesa-claro);
+}
+
+/* Marca ↻ das transações de série */
+.serie {
+  color: var(--texto-suave);
+  cursor: help;
+}
+
+/* Total do que está filtrado + Exportar CSV */
+.rodape-lista {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--texto-suave);
+}
+
+/* =========================================================
+   7. Categorias
+   ========================================================= */
+.nova-categoria {
+  margin-bottom: 8px;
+}
+
+.lista {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.lista li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--borda);
+}
+
+.lista li:last-child {
+  border-bottom: none;
+}
+
+.categoria-nome {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.meta-info {
+  color: var(--principal-escuro);
+  background: var(--principal-claro);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.linha .meta-input {
+  flex: 0 0 140px;
+}
+
+/* =========================================================
+   8. Gráfico de despesas por categoria
+   ========================================================= */
 .grafico {
   list-style: none;
   padding: 0;
+  margin: 0;
 }
 
 /* Cada linha: nome | barra | valor */
 .grafico li {
   display: grid;
-  grid-template-columns: minmax(80px, 30%) 1fr auto;
+  grid-template-columns: minmax(70px, 28%) 1fr auto;
   gap: 8px;
   align-items: center;
-  padding: 4px 0;
+  padding: 5px 0;
 }
 
 .grafico-nome {
@@ -211,46 +564,60 @@ td {
   display: block;
   height: 16px;
   min-width: 2px;
-  background: #2a78d6;
+  background: var(--principal);
   border-radius: 0 4px 4px 0;
 }
 
 .grafico-valor {
   text-align: right;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .grafico-valor small {
-  color: #666;
+  color: var(--texto-suave);
 }
 
-/* Meta na tela de categorias */
-.linha .meta-input {
-  flex: 0 0 130px;
-}
-
-.meta-info {
-  color: #666;
-}
-
-/* Metas do mês: nome | barra de progresso | valores e situação */
+/* =========================================================
+   9. Metas do mês
+   ========================================================= */
 .metas {
   list-style: none;
   padding: 0;
+  margin: 0;
 }
 
+/* Linha 1: nome | valores. Linha 2: barra. Linha 3: situação. */
 .metas li {
   display: grid;
-  grid-template-columns: minmax(80px, 25%) 1fr auto;
-  gap: 8px;
-  align-items: center;
-  padding: 6px 0;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  padding: 8px 0;
+}
+
+.meta-nome {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta-texto {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.meta-texto small,
+.meta-situacao {
+  color: var(--texto-suave);
 }
 
 .meta-trilho {
+  grid-column: 1 / -1;
   display: block;
-  height: 12px;
-  background: #e0e0e0;
+  height: 10px;
+  background: #e6e9ee;
   border-radius: 4px;
   overflow: hidden;
 }
@@ -261,36 +628,36 @@ td {
   min-width: 2px;
 }
 
-.meta-texto {
-  text-align: right;
-  white-space: nowrap;
+.meta-situacao {
+  grid-column: 1 / -1;
 }
 
-.meta-texto small {
-  color: #666;
-}
-
-/* Cores de status (sempre acompanhadas de ícone e texto) */
 .meta-barra.dentro {
-  background: #0ca30c;
+  background: var(--status-bom);
 }
 .meta-barra.perto {
-  background: #fab219;
+  background: var(--status-alerta);
 }
 .meta-barra.estourou {
-  background: #d03b3b;
+  background: var(--status-critico);
 }
 .meta-icone.dentro {
-  color: #0ca30c;
+  color: var(--status-bom);
 }
 .meta-icone.perto {
-  color: #b07800;
+  color: var(--status-alerta-texto);
 }
 .meta-icone.estourou {
-  color: #d03b3b;
+  color: var(--status-critico);
 }
 
-/* Resumo mês a mês */
+/* =========================================================
+   10. Resumo mês a mês
+   ========================================================= */
+.ano {
+  margin-bottom: 8px;
+}
+
 .ano strong {
   min-width: 3em;
   text-align: center;
@@ -301,7 +668,8 @@ td {
   gap: 16px;
   list-style: none;
   padding: 0;
-  color: #666;
+  margin: 8px 0;
+  color: var(--texto-suave);
 }
 
 .legenda .cor {
@@ -321,7 +689,7 @@ td {
 
 .colunas {
   height: 160px;
-  border-bottom: 1px solid #ccc;
+  border-bottom: 1px solid #c9d0d8;
 }
 
 .coluna {
@@ -330,10 +698,11 @@ td {
   justify-content: center;
   align-items: flex-end;
   gap: 2px;
+  border-radius: 4px 4px 0 0;
 }
 
 .coluna:hover {
-  background: #e8e8e8;
+  background: #eef1f5;
 }
 
 /* Barra fina, reta na base e arredondada no topo */
@@ -354,13 +723,97 @@ td {
   flex: 1;
   text-align: center;
   font-size: 12px;
-  color: #666;
+  color: var(--texto-suave);
 }
 
-.receita {
-  color: #1b7f3b;
-}
+/* =========================================================
+   11. Celular
+   ========================================================= */
+@media (max-width: 600px) {
+  .card {
+    padding: 14px;
+  }
 
-.despesa {
-  color: #b00020;
+  .campo-largo {
+    grid-column: 1 / -1;
+  }
+
+  .cartao-valor {
+    font-size: 1.3rem;
+  }
+
+  .usuario {
+    order: 3;
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .barra {
+    width: 6px;
+  }
+
+  .filtros select {
+    flex: 1 1 140px;
+  }
+
+  /* Resumo mês a mês: no celular, só Mês | Saldo | Acumulado
+     (receitas e despesas já aparecem no gráfico logo acima) */
+  .tabela-resumo th:nth-child(2),
+  .tabela-resumo td:nth-child(2),
+  .tabela-resumo th:nth-child(3),
+  .tabela-resumo td:nth-child(3) {
+    display: none;
+  }
+
+  /* Transações: no celular, cada linha vira um bloco
+     Linha 1: descrição ............ valor
+     Linha 2: data · categoria · tipo
+     Linha 3: botões */
+  .tabela-transacoes thead {
+    display: none;
+  }
+
+  .tabela-transacoes tr {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    grid-template-areas:
+      'desc desc desc valor'
+      'data cat tipo tipo'
+      'acoes acoes acoes acoes';
+    gap: 4px 10px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--borda);
+  }
+
+  .tabela-transacoes td {
+    border: none;
+    padding: 0;
+  }
+
+  .tabela-transacoes td:nth-child(1) {
+    grid-area: data;
+    color: var(--texto-suave);
+    font-size: 0.85rem;
+  }
+  .tabela-transacoes td:nth-child(2) {
+    grid-area: desc;
+    font-weight: 600;
+  }
+  .tabela-transacoes td:nth-child(3) {
+    grid-area: cat;
+    color: var(--texto-suave);
+    font-size: 0.85rem;
+  }
+  .tabela-transacoes td:nth-child(4) {
+    grid-area: tipo;
+  }
+  .tabela-transacoes td:nth-child(5) {
+    grid-area: valor;
+    font-weight: 600;
+  }
+  .tabela-transacoes td:nth-child(6) {
+    grid-area: acoes;
+    padding-top: 4px;
+  }
 }

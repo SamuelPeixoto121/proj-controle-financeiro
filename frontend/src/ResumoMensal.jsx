@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { NOMES_MESES, formatarReais, mesAtual } from './formatar.js'
 
+// Vermelho se negativo, verde se positivo, cor normal se zero.
+const corDoValor = (valor) => (valor < 0 ? 'despesa' : valor > 0 ? 'receita' : '')
+
 // Receitas e despesas de cada mês do ano: gráfico de colunas + tabela.
 function ResumoMensal({ mes, atualizacao }) {
   // Começa no ano do mês escolhido no filtro (ou no ano atual).
@@ -23,7 +26,7 @@ function ResumoMensal({ mes, atualizacao }) {
   const acumuladoFinal = meses.at(-1)?.acumulado ?? 0
 
   return (
-    <section>
+    <section className="card">
       <h2>Resumo mês a mês</h2>
 
       <div className="linha ano">
@@ -68,7 +71,8 @@ function ResumoMensal({ mes, atualizacao }) {
             ))}
           </div>
 
-          <table>
+          <div className="tabela-rolagem">
+          <table className="tabela-resumo">
             <thead>
               <tr>
                 <th>Mês</th>
@@ -86,8 +90,8 @@ function ResumoMensal({ mes, atualizacao }) {
                   </td>
                   <td className="valor">{formatarReais(m.receitas)}</td>
                   <td className="valor">{formatarReais(m.despesas)}</td>
-                  <td className={`valor ${m.saldo < 0 ? 'despesa' : 'receita'}`}>{formatarReais(m.saldo)}</td>
-                  <td className={`valor ${m.acumulado < 0 ? 'despesa' : 'receita'}`}>
+                  <td className={`valor ${corDoValor(m.saldo)}`}>{formatarReais(m.saldo)}</td>
+                  <td className={`valor ${corDoValor(m.acumulado)}`}>
                     {formatarReais(m.acumulado)}
                   </td>
                 </tr>
@@ -98,13 +102,14 @@ function ResumoMensal({ mes, atualizacao }) {
                 <th>Total</th>
                 <th className="valor">{formatarReais(total('receitas'))}</th>
                 <th className="valor">{formatarReais(total('despesas'))}</th>
-                <th className={`valor ${saldoTotal < 0 ? 'despesa' : 'receita'}`}>{formatarReais(saldoTotal)}</th>
-                <th className={`valor ${acumuladoFinal < 0 ? 'despesa' : 'receita'}`}>
+                <th className={`valor ${corDoValor(saldoTotal)}`}>{formatarReais(saldoTotal)}</th>
+                <th className={`valor ${corDoValor(acumuladoFinal)}`}>
                   {formatarReais(acumuladoFinal)}
                 </th>
               </tr>
             </tfoot>
           </table>
+          </div>
         </>
       )}
     </section>

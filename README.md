@@ -17,6 +17,8 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 - **Gráfico de despesas por categoria**: barras da maior para a menor despesa, com valor e porcentagem
 - **Resumo mês a mês**: receitas e despesas de cada mês do ano lado a lado, em gráfico e em tabela com o saldo de cada mês
 
+A tela é dividida em três abas: **Visão geral** (números do mês, metas, gráficos e resumo mês a mês), **Transações** e **Categorias**. O layout se adapta ao celular.
+
 ## Tecnologias
 
 | Parte | Tecnologias |
@@ -155,7 +157,7 @@ proj-controle-financeiro/
         ├── api.js           Função que chama a API e trata os erros
         ├── formatar.js      Formatação de valores (R$) e datas
         ├── csv.js           Geração e download do arquivo CSV
-        ├── App.jsx          Página principal, filtro por mês e saldo
+        ├── App.jsx          Cabeçalho, abas (Visão geral, Transações, Categorias), filtro por mês e cartões de saldo
         ├── Login.jsx        Tela de entrar e criar conta
         ├── TrocarSenha.jsx  Formulário de troca de senha
         ├── ResumoMensal.jsx Resumo mês a mês (gráfico e tabela)

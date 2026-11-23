@@ -22,13 +22,16 @@ function MetasDoMes({ mes, atualizacao }) {
   }, [mes, atualizacao])
 
   return (
-    <section>
+    <section className="card">
       <h2>Metas do mês</h2>
 
-      {!mes && <p>Escolha um mês para ver as metas.</p>}
+      {!mes && <p className="vazio">Escolha um mês para ver as metas.</p>}
       {mes && erro && <p className="erro">{erro}</p>}
       {mes && !erro && metas.length === 0 && (
-        <p>Nenhuma meta definida. Para criar, clique em Editar numa categoria e preencha a meta mensal.</p>
+        <p className="vazio">
+          Nenhuma meta definida. Para criar, vá na aba Categorias, clique em Editar e preencha a meta
+          mensal.
+        </p>
       )}
 
       {mes && (
@@ -38,20 +41,20 @@ function MetasDoMes({ mes, atualizacao }) {
             const s = situacao(porcentagem)
             return (
               <li key={m.categoriaId}>
-                <span className="grafico-nome">{m.categoria}</span>
+                {/* Linha 1: nome e valores. Linha 2: barra. Linha 3: situação. */}
+                <span className="meta-nome">{m.categoria}</span>
+                <span className="meta-texto">
+                  {formatarReais(m.gasto)} de {formatarReais(m.meta)} <small>({porcentagem}%)</small>
+                </span>
                 <span className="meta-trilho" aria-hidden="true">
                   <span
                     className={`meta-barra ${s.classe}`}
                     style={{ width: `${Math.min(porcentagem, 100)}%` }}
                   />
                 </span>
-                <span className="meta-texto">
-                  {formatarReais(m.gasto)} de {formatarReais(m.meta)} <small>({porcentagem}%)</small>
-                  <br />
-                  <small>
-                    <span className={`meta-icone ${s.classe}`}>{s.icone}</span> {s.texto}
-                  </small>
-                </span>
+                <small className="meta-situacao">
+                  <span className={`meta-icone ${s.classe}`}>{s.icone}</span> {s.texto}
+                </small>
               </li>
             )
           })}

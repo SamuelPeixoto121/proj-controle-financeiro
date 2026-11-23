@@ -29,11 +29,11 @@ function Login({ aoEntrar }) {
   }
 
   return (
-    <main className="login">
-      <h1>Controle Financeiro</h1>
+    <main className="login card">
+      <h1>💰 Controle Financeiro</h1>
       <h2>{criandoConta ? 'Criar conta' : 'Entrar'}</h2>
 
-      <form onSubmit={enviar} className="login-formulario">
+      <form onSubmit={enviar} className="formulario-vertical">
         <label>
           E-mail
           <input
@@ -59,7 +59,7 @@ function Login({ aoEntrar }) {
 
         {erro && <p className="erro">{erro}</p>}
 
-        <button type="submit" disabled={enviando}>
+        <button type="submit" className="principal" disabled={enviando}>
           {enviando ? 'Aguarde...' : criandoConta ? 'Criar conta' : 'Entrar'}
         </button>
       </form>

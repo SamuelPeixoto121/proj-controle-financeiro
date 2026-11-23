@@ -126,167 +126,205 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
   }
 
   return (
-    <section>
-      <h2>Transações</h2>
+    <>
+      <section className="card">
+        <h2>{editandoId ? 'Editar transação' : 'Nova transação'}</h2>
 
-      <form onSubmit={salvar} className="formulario">
-        <input
-          name="descricao"
-          value={formulario.descricao}
-          onChange={alterarCampo}
-          placeholder="Descrição"
-        />
-        <input
-          name="valor"
-          type="number"
-          step="0.01"
-          min="0.01"
-          value={formulario.valor}
-          onChange={alterarCampo}
-          placeholder="Valor"
-        />
-        <input name="data" type="date" value={formulario.data} onChange={alterarCampo} />
-        <select name="tipo" value={formulario.tipo} onChange={alterarCampo}>
-          <option value="Despesa">Despesa</option>
-          <option value="Receita">Receita</option>
-        </select>
-        <select name="categoriaId" value={formulario.categoriaId} onChange={alterarCampo}>
-          <option value="">Categoria...</option>
-          {categorias.map((categoria) => (
-            <option key={categoria.id} value={categoria.id}>
-              {categoria.nome}
-            </option>
-          ))}
-        </select>
-        {!editandoId && (
-          <label className="repetir">
-            Repetir por
+        <form onSubmit={salvar} className="formulario">
+          <label className="campo campo-largo">
+            Descrição
             <input
+              name="descricao"
+              value={formulario.descricao}
+              onChange={alterarCampo}
+              placeholder="Ex.: Mercado, Salário..."
+            />
+          </label>
+          <label className="campo">
+            Valor (R$)
+            <input
+              name="valor"
               type="number"
-              min="1"
-              max="60"
-              value={repetir}
-              onChange={(e) => setRepetir(e.target.value)}
-              required
+              step="0.01"
+              min="0.01"
+              value={formulario.valor}
+              onChange={alterarCampo}
+              placeholder="0,00"
             />
-            {repetir === '1' ? 'mês' : 'meses'}
           </label>
-        )}
-        {editandoSerie && (
-          <label className="seguintes">
-            <input
-              type="checkbox"
-              checked={aplicarSeguintes}
-              onChange={(e) => setAplicarSeguintes(e.target.checked)}
-            />
-            Aplicar também aos meses seguintes desta série
+          <label className="campo">
+            Data
+            <input name="data" type="date" value={formulario.data} onChange={alterarCampo} />
           </label>
-        )}
-        <button type="submit">{editandoId ? 'Salvar' : 'Adicionar'}</button>
-        {editandoId && (
-          <button type="button" onClick={cancelarEdicao}>
-            Cancelar
-          </button>
-        )}
-      </form>
-
-      {erro && <p className="erro">{erro}</p>}
-
-      {transacoes.length === 0 ? (
-        <p>{mes ? 'Nenhuma transação neste mês.' : 'Nenhuma transação cadastrada.'}</p>
-      ) : (
-        <>
-          <div className="formulario filtros">
-            <input
-              type="search"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar descrição..."
-              aria-label="Buscar descrição"
-            />
-            <select
-              value={filtroCategoria}
-              onChange={(e) => setFiltroCategoria(e.target.value)}
-              aria-label="Filtrar por categoria"
-            >
-              <option value="">Todas as categorias</option>
+          <label className="campo">
+            Tipo
+            <select name="tipo" value={formulario.tipo} onChange={alterarCampo}>
+              <option value="Despesa">Despesa</option>
+              <option value="Receita">Receita</option>
+            </select>
+          </label>
+          <label className="campo">
+            Categoria
+            <select name="categoriaId" value={formulario.categoriaId} onChange={alterarCampo}>
+              <option value="">Escolha...</option>
               {categorias.map((categoria) => (
                 <option key={categoria.id} value={categoria.id}>
                   {categoria.nome}
                 </option>
               ))}
             </select>
-            <select
-              value={filtroTipo}
-              onChange={(e) => setFiltroTipo(e.target.value)}
-              aria-label="Filtrar por tipo"
-            >
-              <option value="">Todos os tipos</option>
-              <option value="Receita">Receitas</option>
-              <option value="Despesa">Despesas</option>
-            </select>
-            {filtrando && (
-              <button type="button" onClick={limparFiltros}>
-                Limpar
+          </label>
+          {!editandoId && (
+            <label className="campo">
+              Repetir por ({repetir === '1' ? 'mês' : 'meses'})
+              <input
+                type="number"
+                min="1"
+                max="60"
+                value={repetir}
+                onChange={(e) => setRepetir(e.target.value)}
+                required
+              />
+            </label>
+          )}
+          {editandoSerie && (
+            <label className="seguintes">
+              <input
+                type="checkbox"
+                checked={aplicarSeguintes}
+                onChange={(e) => setAplicarSeguintes(e.target.checked)}
+              />
+              Aplicar também aos meses seguintes desta série
+            </label>
+          )}
+
+          <div className="formulario-botoes">
+            <button type="submit" className="principal">
+              {editandoId ? 'Salvar' : 'Adicionar'}
+            </button>
+            {editandoId && (
+              <button type="button" onClick={cancelarEdicao}>
+                Cancelar
               </button>
             )}
           </div>
+        </form>
 
-          {filtradas.length === 0 ? (
-            <p>Nenhuma transação encontrada com esses filtros.</p>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Descrição</th>
-                  <th>Categoria</th>
-                  <th>Tipo</th>
-                  <th className="valor">Valor</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtradas.map((transacao) => (
-                  <tr key={transacao.id}>
-                    <td>{formatarData(transacao.data)}</td>
-                    <td>
-                      {transacao.descricao}
-                      {transacao.serieId && (
-                        <span className="serie" title="Faz parte de uma série repetida">
-                          {' '}
-                          ↻
-                        </span>
-                      )}
-                    </td>
-                    <td>{transacao.categoria?.nome}</td>
-                    <td>{transacao.tipo}</td>
-                    <td className={`valor ${transacao.tipo === 'Receita' ? 'receita' : 'despesa'}`}>
-                      {formatarReais(transacao.valor)}
-                    </td>
-                    <td className="acoes">
-                      <button onClick={() => editar(transacao)}>Editar</button>
-                      <button onClick={() => excluir(transacao)}>Excluir</button>
-                    </td>
-                  </tr>
+        {erro && <p className="erro">{erro}</p>}
+      </section>
+
+      <section className="card">
+        <h2>Transações</h2>
+
+        {transacoes.length === 0 ? (
+          <p className="vazio">
+            {mes ? 'Nenhuma transação neste mês.' : 'Nenhuma transação cadastrada.'}
+          </p>
+        ) : (
+          <>
+            <div className="filtros">
+              <input
+                type="search"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="🔍 Buscar descrição..."
+                aria-label="Buscar descrição"
+              />
+              <select
+                value={filtroCategoria}
+                onChange={(e) => setFiltroCategoria(e.target.value)}
+                aria-label="Filtrar por categoria"
+              >
+                <option value="">Todas as categorias</option>
+                {categorias.map((categoria) => (
+                  <option key={categoria.id} value={categoria.id}>
+                    {categoria.nome}
+                  </option>
                 ))}
-              </tbody>
-            </table>
-          )}
+              </select>
+              <select
+                value={filtroTipo}
+                onChange={(e) => setFiltroTipo(e.target.value)}
+                aria-label="Filtrar por tipo"
+              >
+                <option value="">Todos os tipos</option>
+                <option value="Receita">Receitas</option>
+                <option value="Despesa">Despesas</option>
+              </select>
+              {filtrando && (
+                <button type="button" onClick={limparFiltros}>
+                  Limpar
+                </button>
+              )}
+            </div>
 
-          {filtradas.length > 0 && (
-            <p className="totais-filtro">
-              {filtradas.length} {filtradas.length === 1 ? 'transação' : 'transações'} · Receitas{' '}
-              <span className="receita">{formatarReais(somar('Receita'))}</span> · Despesas{' '}
-              <span className="despesa">{formatarReais(somar('Despesa'))}</span>{' '}
-              <button type="button" onClick={exportar}>
-                Exportar CSV
-              </button>
-            </p>
-          )}
-        </>
-      )}
-    </section>
+            {filtradas.length === 0 ? (
+              <p className="vazio">Nenhuma transação encontrada com esses filtros.</p>
+            ) : (
+              <div className="tabela-rolagem">
+                <table className="tabela-transacoes">
+                  <thead>
+                    <tr>
+                      <th>Data</th>
+                      <th>Descrição</th>
+                      <th>Categoria</th>
+                      <th>Tipo</th>
+                      <th className="valor">Valor</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtradas.map((transacao) => (
+                      <tr key={transacao.id} className={transacao.id === editandoId ? 'editando' : ''}>
+                        <td>{formatarData(transacao.data)}</td>
+                        <td>
+                          {transacao.descricao}
+                          {transacao.serieId && (
+                            <span className="serie" title="Faz parte de uma série repetida">
+                              {' '}
+                              ↻
+                            </span>
+                          )}
+                        </td>
+                        <td>{transacao.categoria?.nome}</td>
+                        <td>
+                          <span className={`etiqueta ${transacao.tipo === 'Receita' ? 'receita' : 'despesa'}`}>
+                            {transacao.tipo}
+                          </span>
+                        </td>
+                        <td className={`valor ${transacao.tipo === 'Receita' ? 'receita' : 'despesa'}`}>
+                          {transacao.tipo === 'Receita' ? '+ ' : '− '}
+                          {formatarReais(transacao.valor)}
+                        </td>
+                        <td className="acoes">
+                          <button onClick={() => editar(transacao)}>Editar</button>
+                          <button className="perigo" onClick={() => excluir(transacao)}>
+                            Excluir
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {filtradas.length > 0 && (
+              <div className="rodape-lista">
+                <span>
+                  {filtradas.length} {filtradas.length === 1 ? 'transação' : 'transações'} · Receitas{' '}
+                  <span className="receita">{formatarReais(somar('Receita'))}</span> · Despesas{' '}
+                  <span className="despesa">{formatarReais(somar('Despesa'))}</span>
+                </span>
+                <button type="button" onClick={exportar}>
+                  ⬇ Exportar CSV
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+    </>
   )
 }
 

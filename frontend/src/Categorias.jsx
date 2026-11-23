@@ -73,21 +73,26 @@ function Categorias({ aoAlterar }) {
   }
 
   return (
-    <section>
+    <section className="card">
       <h2>Categorias</h2>
+      <p className="texto-suave">
+        Organize suas transações por categoria. Clique em Editar para definir uma meta de gasto por mês.
+      </p>
 
-      <form onSubmit={criar} className="linha">
+      <form onSubmit={criar} className="linha nova-categoria">
         <input
           value={novoNome}
           onChange={(e) => setNovoNome(e.target.value)}
           placeholder="Nova categoria"
         />
-        <button type="submit">Adicionar</button>
+        <button type="submit" className="principal">
+          Adicionar
+        </button>
       </form>
 
       {erro && <p className="erro">{erro}</p>}
 
-      {categorias.length === 0 && <p>Nenhuma categoria cadastrada.</p>}
+      {categorias.length === 0 && <p className="vazio">Nenhuma categoria cadastrada.</p>}
 
       <ul className="lista">
         {categorias.map((categoria) =>
@@ -110,7 +115,9 @@ function Categorias({ aoAlterar }) {
                   placeholder="Meta mensal"
                   aria-label="Meta mensal (vazio = sem meta)"
                 />
-                <button type="submit">Salvar</button>
+                <button type="submit" className="principal">
+                  Salvar
+                </button>
                 <button type="button" onClick={() => setEditandoId(null)}>
                   Cancelar
                 </button>
@@ -118,14 +125,16 @@ function Categorias({ aoAlterar }) {
             </li>
           ) : (
             <li key={categoria.id} className="linha">
-              <span>
+              <span className="categoria-nome">
                 {categoria.nome}
                 {categoria.metaMensal != null && (
-                  <small className="meta-info"> · meta {formatarReais(categoria.metaMensal)}/mês</small>
+                  <small className="meta-info">meta {formatarReais(categoria.metaMensal)}/mês</small>
                 )}
               </span>
               <button onClick={() => comecarEdicao(categoria)}>Editar</button>
-              <button onClick={() => excluir(categoria)}>Excluir</button>
+              <button className="perigo" onClick={() => excluir(categoria)}>
+                Excluir
+              </button>
             </li>
           ),
         )}

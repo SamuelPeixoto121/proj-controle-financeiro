@@ -28,7 +28,7 @@ function TrocarSenha({ aoTrocar, aoCancelar }) {
   }
 
   return (
-    <form onSubmit={salvar} className="login-formulario trocar-senha">
+    <form onSubmit={salvar} className="card formulario-vertical trocar-senha">
       <h2>Trocar senha</h2>
       <label>
         Senha atual
@@ -67,7 +67,7 @@ function TrocarSenha({ aoTrocar, aoCancelar }) {
       {erro && <p className="erro">{erro}</p>}
 
       <div className="linha">
-        <button type="submit" disabled={enviando}>
+        <button type="submit" className="principal" disabled={enviando}>
           {enviando ? 'Aguarde...' : 'Salvar'}
         </button>
         <button type="button" onClick={aoCancelar}>
