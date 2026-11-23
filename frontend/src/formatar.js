@@ -16,3 +16,8 @@ export const mesAtual = () => hoje().slice(0, 7)
 // O NFD separa a letra do acento ("á" vira "a" + "´"), e o replace apaga os acentos.
 export const normalizar = (texto) =>
   texto.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+
+export const NOMES_MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+
+// "2026-11" -> "nov/2026"
+export const formatarMes = (mes) => `${NOMES_MESES[Number(mes.slice(5, 7)) - 1]}/${mes.slice(0, 4)}`

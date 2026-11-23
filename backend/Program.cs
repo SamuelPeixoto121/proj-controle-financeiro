@@ -331,7 +331,13 @@ rotas.MapGet("/saldo", async (string? mes, ClaimsPrincipal user, AppDbContext db
         .Where(t => t.Tipo == TipoTransacao.Despesa)
         .SumAsync(t => t.Valor);
 
-    return Results.Ok(new { receitas, despesas, saldo = receitas - despesas });
+    if (mes is null)
+        return Results.Ok(new { receitas, despesas, saldo = receitas - despesas });
+
+    // Com mês: também o acumulado, ou seja, o saldo de tudo até o fim desse mês.
+    var fimDoMes = DateTime.ParseExact(mes, "yyyy-MM", null).AddMonths(1);
+    var acumulado = await SaldoAntesDe(DoUsuario(db.Transacoes, user), fimDoMes);
+    return Results.Ok(new { receitas, despesas, saldo = receitas - despesas, acumulado });
 });
 
 // Gráfico: total de despesas por categoria, do maior para o menor
@@ -394,13 +400,17 @@ rotas.MapGet("/resumo-mensal", async (string? ano, ClaimsPrincipal user, AppDbCo
         .Select(g => new { Mes = g.Key.Month, g.Key.Tipo, Total = g.Sum(t => t.Valor) })
         .ToListAsync();
 
+    // O acumulado começa com o que sobrou (ou faltou) dos anos anteriores.
+    var acumulado = await SaldoAntesDe(DoUsuario(db.Transacoes, user), inicio);
+
     // Monta os 12 meses, preenchendo com zero os que não têm transações.
     var meses = Enumerable.Range(1, 12).Select(m =>
     {
         var receitas = totais.Where(x => x.Mes == m && x.Tipo == TipoTransacao.Receita).Sum(x => x.Total);
         var despesas = totais.Where(x => x.Mes == m && x.Tipo == TipoTransacao.Despesa).Sum(x => x.Total);
-        return new { mes = $"{anoEscolhido}-{m:00}", receitas, despesas, saldo = receitas - despesas };
-    });
+        acumulado += receitas - despesas;
+        return new { mes = $"{anoEscolhido}-{m:00}", receitas, despesas, saldo = receitas - despesas, acumulado };
+    }).ToList();
 
     return Results.Ok(meses);
 });
@@ -417,6 +427,12 @@ static IQueryable<Transacao> DoUsuario(IQueryable<Transacao> consulta, ClaimsPri
     var usuarioId = UsuarioId(user);
     return consulta.Where(t => t.UsuarioId == usuarioId);
 }
+
+// Receitas menos despesas de todas as transações antes da data.
+static async Task<decimal> SaldoAntesDe(IQueryable<Transacao> consulta, DateTime data) =>
+    await consulta
+        .Where(t => t.Data < data)
+        .SumAsync(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor);
 
 // As outras transações da mesma série, da data informada em diante.
 static async Task<List<Transacao>> SeguintesDaSerie(AppDbContext db, ClaimsPrincipal user, Transacao transacao, DateTime aPartirDe) =>

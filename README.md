@@ -11,6 +11,7 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 - **Metas de gasto por categoria**: um limite mensal opcional para cada categoria, com barra de progresso e aviso de "perto do limite" (80%) e "estourou" (acima de 100%)
 - **Saldo total**: soma das receitas, soma das despesas e saldo (receitas − despesas), atualizado a cada alteração
 - **Filtro por mês**: ver as transações e o saldo de um mês específico, ou de todos os meses
+- **Saldo acumulado**: quanto se tem no fim de cada mês, somando o que sobrou (ou faltou) dos meses anteriores (no resumo do topo e no resumo mês a mês)
 - **Busca e filtros na lista de transações**: por descrição (sem diferenciar maiúsculas e acentos), categoria e tipo, com a soma do que está filtrado
 - **Exportar para CSV**: baixa as transações que estão na tabela (respeitando o mês e os filtros), num formato que o Excel em português abre direto
 - **Gráfico de despesas por categoria**: barras da maior para a menor despesa, com valor e porcentagem
@@ -119,10 +120,10 @@ As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os da
 | POST | `/transacoes` | Cria uma transação. Com `?repetir=12`, cria a mesma transação em 12 meses seguidos, de 1 a 60 (o dia 31 cai no último dia dos meses mais curtos) |
 | PUT | `/transacoes/{id}` | Edita uma transação. Com `?seguintes=true`, aplica descrição, valor, tipo e categoria também às transações seguintes da mesma série |
 | DELETE | `/transacoes/{id}` | Exclui uma transação. Com `?seguintes=true`, exclui também as seguintes da mesma série |
-| GET | `/saldo` | Total de receitas, total de despesas e saldo |
+| GET | `/saldo` | Total de receitas, total de despesas e saldo. Com `?mes=`, também o `acumulado` (saldo de tudo até o fim do mês) |
 | GET | `/despesas-por-categoria` | Total de despesas de cada categoria, do maior para o menor |
 | GET | `/metas?mes=AAAA-MM` | Para cada categoria com meta: a meta e o gasto do mês (o mês é obrigatório) |
-| GET | `/resumo-mensal?ano=AAAA` | Receitas, despesas e saldo de cada um dos 12 meses do ano (sem `ano`, usa o ano atual) |
+| GET | `/resumo-mensal?ano=AAAA` | Receitas, despesas, saldo e acumulado de cada um dos 12 meses do ano (sem `ano`, usa o ano atual) |
 
 `GET /transacoes`, `GET /saldo` e `GET /despesas-por-categoria` aceitam o filtro opcional `?mes=AAAA-MM` (por exemplo, `/saldo?mes=2026-11`) para considerar só um mês. Sem o filtro, consideram todas as transações.
 

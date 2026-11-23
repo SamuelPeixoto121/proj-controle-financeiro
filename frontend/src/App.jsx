@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
-import { formatarReais, mesAtual } from './formatar.js'
+import { formatarMes, formatarReais, mesAtual } from './formatar.js'
 import Categorias from './Categorias.jsx'
 import DespesasPorCategoria from './DespesasPorCategoria.jsx'
 import Login from './Login.jsx'
@@ -112,6 +112,14 @@ function App() {
               </span>
             </strong>
           </li>
+          {mes && saldo.acumulado !== undefined && (
+            <li>
+              Acumulado até o fim de {formatarMes(mes)}:{' '}
+              <span className={saldo.acumulado < 0 ? 'despesa' : 'receita'}>
+                {formatarReais(saldo.acumulado)}
+              </span>
+            </li>
+          )}
         </ul>
       )}
 

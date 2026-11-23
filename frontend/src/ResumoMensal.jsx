@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
-import { formatarReais, mesAtual } from './formatar.js'
-
-const NOMES_MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+import { NOMES_MESES, formatarReais, mesAtual } from './formatar.js'
 
 // Receitas e despesas de cada mês do ano: gráfico de colunas + tabela.
 function ResumoMensal({ mes, atualizacao }) {
@@ -21,6 +19,8 @@ function ResumoMensal({ mes, atualizacao }) {
   const maior = Math.max(0, ...meses.map((m) => Math.max(m.receitas, m.despesas)))
   const total = (campo) => meses.reduce((soma, m) => soma + m[campo], 0)
   const saldoTotal = total('saldo')
+  // Quanto se tem no fim do ano (o acumulado de dezembro)
+  const acumuladoFinal = meses.at(-1)?.acumulado ?? 0
 
   return (
     <section>
@@ -75,6 +75,7 @@ function ResumoMensal({ mes, atualizacao }) {
                 <th className="valor">Receitas</th>
                 <th className="valor">Despesas</th>
                 <th className="valor">Saldo</th>
+                <th className="valor">Acumulado</th>
               </tr>
             </thead>
             <tbody>
@@ -86,6 +87,9 @@ function ResumoMensal({ mes, atualizacao }) {
                   <td className="valor">{formatarReais(m.receitas)}</td>
                   <td className="valor">{formatarReais(m.despesas)}</td>
                   <td className={`valor ${m.saldo < 0 ? 'despesa' : 'receita'}`}>{formatarReais(m.saldo)}</td>
+                  <td className={`valor ${m.acumulado < 0 ? 'despesa' : 'receita'}`}>
+                    {formatarReais(m.acumulado)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -95,6 +99,9 @@ function ResumoMensal({ mes, atualizacao }) {
                 <th className="valor">{formatarReais(total('receitas'))}</th>
                 <th className="valor">{formatarReais(total('despesas'))}</th>
                 <th className={`valor ${saldoTotal < 0 ? 'despesa' : 'receita'}`}>{formatarReais(saldoTotal)}</th>
+                <th className={`valor ${acumuladoFinal < 0 ? 'despesa' : 'receita'}`}>
+                  {formatarReais(acumuladoFinal)}
+                </th>
               </tr>
             </tfoot>
           </table>
