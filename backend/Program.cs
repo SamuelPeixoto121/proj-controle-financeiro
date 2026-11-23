@@ -276,6 +276,9 @@ rotas.MapPost("/transacoes", async (Transacao entrada, string? repetir, string? 
         CopiarCampos(entrada, copia);
         // Sempre a partir da data original: 31/01 vira 28/02 (ou 29/02) e depois 31/03.
         copia.Data = entrada.Data.AddMonths(i);
+        // Só a 1ª segue o "já foi paga"; as dos meses seguintes começam pendentes.
+        if (i > 0)
+            copia.Pago = false;
         if (parcelado)
         {
             copia.Valor = i == 0 ? primeiraParcela : valorParcela;
@@ -342,6 +345,52 @@ rotas.MapDelete("/transacoes/{id}", async (int id, bool? seguintes, ClaimsPrinci
         db.Transacoes.RemoveRange(await SeguintesDaSerie(db, user, transacao, transacao.Data));
     await db.SaveChangesAsync();
     return Results.NoContent();
+});
+
+// Marca só a situação (paga / pendente), sem mexer no resto da transação.
+rotas.MapPut("/transacoes/{id}/pago", async (int id, Situacao entrada, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var transacao = await DoUsuario(db.Transacoes.Include(t => t.Categoria), user).FirstOrDefaultAsync(t => t.Id == id);
+    if (transacao is null)
+        return Results.NotFound();
+
+    transacao.Pago = entrada.Pago;
+    await db.SaveChangesAsync();
+    return Results.Ok(transacao);
+});
+
+// Contas pendentes (a pagar e a receber) até o fim do mês, inclusive as atrasadas de meses anteriores.
+// Sem mês: todas as pendentes.
+rotas.MapGet("/pendentes", async (string? mes, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var consulta = DoUsuario(db.Transacoes.Include(t => t.Categoria), user).Where(t => !t.Pago);
+    if (mes is not null)
+    {
+        if (!DateTime.TryParseExact(mes, "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var inicio))
+            return Results.BadRequest(MesInvalido);
+        var fimDoMes = inicio.AddMonths(1);
+        consulta = consulta.Where(t => t.Data < fimDoMes);
+    }
+
+    var pendentes = await consulta.OrderBy(t => t.Data).ThenBy(t => t.Id).ToListAsync();
+    var hoje = DateTime.Today;
+    return Results.Ok(new
+    {
+        aPagar = pendentes.Where(t => t.Tipo == TipoTransacao.Despesa).Sum(t => t.Valor),
+        aReceber = pendentes.Where(t => t.Tipo == TipoTransacao.Receita).Sum(t => t.Valor),
+        transacoes = pendentes.Select(t => new
+        {
+            t.Id,
+            t.Descricao,
+            t.Valor,
+            t.Data,
+            t.Tipo,
+            categoria = t.Categoria?.Nome,
+            t.SerieId,
+            // Atrasada: a data já passou e ainda não foi paga/recebida.
+            atrasada = t.Data < hoje,
+        }),
+    });
 });
 
 // Saldo
@@ -523,7 +572,9 @@ static void CopiarCampos(Transacao origem, Transacao destino)
     destino.Data = origem.Data;
     destino.Tipo = origem.Tipo;
     destino.CategoriaId = origem.CategoriaId;
+    destino.Pago = origem.Pago;
 }
 
 record Credenciais(string? Email, string? Senha);
 record TrocaDeSenha(string? SenhaAtual, string? NovaSenha);
+record Situacao(bool Pago);

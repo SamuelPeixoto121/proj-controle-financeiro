@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { baixarArquivo, gerarCsv } from './csv.js'
-import { formatarData, formatarReais, hoje, normalizar, previaDeParcelas } from './formatar.js'
+import { formatarData, formatarReais, hoje, normalizar, previaDeParcelas, situacaoDe } from './formatar.js'
 
 const formularioVazio = () => ({
   descricao: '',
@@ -9,7 +9,28 @@ const formularioVazio = () => ({
   data: hoje(),
   tipo: 'Despesa',
   categoriaId: '',
+  pago: true,
 })
+
+// Situação clicável na tabela: ✔ Paga / ○ A pagar / ⚠ Atrasada (ícone + texto, não só cor).
+function BotaoSituacao({ transacao, aoClicar }) {
+  const texto = situacaoDe(transacao)
+  const [classe, icone] = transacao.pago
+    ? ['paga', '✔']
+    : texto === 'Atrasada'
+      ? ['atrasada', '⚠']
+      : ['pendente', '○']
+  return (
+    <button
+      type="button"
+      className={`situacao ${classe}`}
+      onClick={aoClicar}
+      title={transacao.pago ? 'Clique para marcar como pendente' : 'Clique para marcar como paga'}
+    >
+      {icone} {texto}
+    </button>
+  )
+}
 
 function Transacoes({ mes, atualizacao, aoAlterar }) {
   const [transacoes, setTransacoes] = useState([])
@@ -27,6 +48,7 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
   const [busca, setBusca] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
+  const [filtroSituacao, setFiltroSituacao] = useState('')
 
   // Recarrega sempre que algo mudar em qualquer parte da tela ou o mês mudar.
   useEffect(() => {
@@ -45,9 +67,10 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
     (t) =>
       normalizar(t.descricao).includes(termo) &&
       (!filtroCategoria || t.categoriaId === Number(filtroCategoria)) &&
-      (!filtroTipo || t.tipo === filtroTipo),
+      (!filtroTipo || t.tipo === filtroTipo) &&
+      (!filtroSituacao || (filtroSituacao === 'pagas' ? t.pago : !t.pago)),
   )
-  const filtrando = busca || filtroCategoria || filtroTipo
+  const filtrando = busca || filtroCategoria || filtroTipo || filtroSituacao
   const somar = (tipo) =>
     filtradas.filter((t) => t.tipo === tipo).reduce((soma, t) => soma + t.valor, 0)
 
@@ -60,11 +83,14 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
     setBusca('')
     setFiltroCategoria('')
     setFiltroTipo('')
+    setFiltroSituacao('')
   }
 
   function alterarCampo(evento) {
     const { name, value } = evento.target
-    setFormulario({ ...formulario, [name]: value })
+    // Ao criar: data de hoje ou passada já vem como paga; data futura, como pendente.
+    const pago = name === 'data' && !editandoId ? value <= hoje() : formulario.pago
+    setFormulario({ ...formulario, [name]: value, pago })
   }
 
   function cancelarEdicao() {
@@ -108,10 +134,22 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
       data: transacao.data.slice(0, 10),
       tipo: transacao.tipo,
       categoriaId: String(transacao.categoriaId),
+      pago: transacao.pago,
     })
     setEditandoSerie(transacao.serieId != null)
     setAplicarSeguintes(false)
     setErro('')
+  }
+
+  // Clique na situação: alterna entre paga e pendente.
+  async function alternarPago(transacao) {
+    setErro('')
+    try {
+      await api(`/transacoes/${transacao.id}/pago`, { method: 'PUT', body: { pago: !transacao.pago } })
+      aoAlterar()
+    } catch (e) {
+      setErro(e.message)
+    }
   }
 
   async function excluir(transacao) {
@@ -205,6 +243,17 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
           {!editandoId && lancamento === 'parcelar' && previaParcelas && (
             <p className="previa-parcelas">{previaParcelas}</p>
           )}
+          <label className="seguintes">
+            <input
+              type="checkbox"
+              checked={formulario.pago}
+              onChange={(e) => setFormulario({ ...formulario, pago: e.target.checked })}
+            />
+            {formulario.tipo === 'Receita' ? 'Já foi recebida' : 'Já foi paga'}
+            {!editandoId && lancamento !== 'unico' && (
+              <small className="texto-suave">(só a 1ª; as dos meses seguintes começam pendentes)</small>
+            )}
+          </label>
           {editandoSerie && (
             <label className="seguintes">
               <input
@@ -269,6 +318,15 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
                 <option value="Receita">Receitas</option>
                 <option value="Despesa">Despesas</option>
               </select>
+              <select
+                value={filtroSituacao}
+                onChange={(e) => setFiltroSituacao(e.target.value)}
+                aria-label="Filtrar por situação"
+              >
+                <option value="">Pagas e pendentes</option>
+                <option value="pagas">Só pagas</option>
+                <option value="pendentes">Só pendentes</option>
+              </select>
               {filtrando && (
                 <button type="button" onClick={limparFiltros}>
                   Limpar
@@ -287,6 +345,7 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
                       <th>Descrição</th>
                       <th>Categoria</th>
                       <th>Tipo</th>
+                      <th>Situação</th>
                       <th className="valor">Valor</th>
                       <th></th>
                     </tr>
@@ -309,6 +368,9 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
                           <span className={`etiqueta ${transacao.tipo === 'Receita' ? 'receita' : 'despesa'}`}>
                             {transacao.tipo}
                           </span>
+                        </td>
+                        <td>
+                          <BotaoSituacao transacao={transacao} aoClicar={() => alternarPago(transacao)} />
                         </td>
                         <td className={`valor ${transacao.tipo === 'Receita' ? 'receita' : 'despesa'}`}>
                           {transacao.tipo === 'Receita' ? '+ ' : '− '}

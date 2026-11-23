@@ -563,6 +563,30 @@ tfoot th {
   background: var(--despesa-claro);
 }
 
+/* Situação clicável: ✔ Paga / ○ A pagar / ⚠ Atrasada */
+.situacao {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.situacao.paga {
+  color: var(--receita);
+  border-color: var(--borda);
+}
+
+.situacao.pendente {
+  color: var(--texto-suave);
+  border-style: dashed;
+}
+
+.situacao.atrasada {
+  color: var(--despesa);
+  border-color: var(--perigo-borda);
+  background: var(--despesa-claro);
+}
+
 /* Marca ↻ das transações de série */
 .serie {
   color: var(--texto-suave);
@@ -578,6 +602,54 @@ tfoot th {
   gap: 8px;
   margin-top: 12px;
   color: var(--texto-suave);
+}
+
+/* Card "Contas do mês": título à esquerda, totais à direita */
+.card-titulo {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 16px;
+  margin-bottom: 8px;
+}
+
+.card-titulo h2 {
+  margin: 0;
+}
+
+.contas {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Cada conta: data | descrição | valor | botão */
+.contas li {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--borda);
+}
+
+.contas li:last-child {
+  border-bottom: none;
+}
+
+.conta-data {
+  color: var(--texto-suave);
+  font-variant-numeric: tabular-nums;
+}
+
+.contas li.atrasada .conta-data {
+  color: var(--despesa);
+}
+
+.contas button {
+  padding: 4px 10px;
+  font-size: 0.9rem;
 }
 
 /* =========================================================
@@ -850,6 +922,26 @@ tfoot th {
     flex: 1 1 140px;
   }
 
+  /* Contas do mês: descrição e valor em cima; data e botão embaixo */
+  .contas li {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'desc valor'
+      'data botao';
+  }
+  .conta-descricao {
+    grid-area: desc;
+  }
+  .contas .valor {
+    grid-area: valor;
+  }
+  .conta-data {
+    grid-area: data;
+  }
+  .contas button {
+    grid-area: botao;
+  }
+
   /* Resumo mês a mês: no celular, só Mês | Saldo | Acumulado
      (receitas e despesas já aparecem no gráfico logo acima) */
   .tabela-resumo th:nth-child(2),
@@ -873,7 +965,7 @@ tfoot th {
     grid-template-areas:
       'desc desc desc valor'
       'data cat tipo tipo'
-      'acoes acoes acoes acoes';
+      'situacao acoes acoes acoes';
     gap: 4px 10px;
     align-items: center;
     padding: 10px 0;
@@ -903,10 +995,14 @@ tfoot th {
     grid-area: tipo;
   }
   .tabela-transacoes td:nth-child(5) {
+    grid-area: situacao;
+    padding-top: 4px;
+  }
+  .tabela-transacoes td:nth-child(6) {
     grid-area: valor;
     font-weight: 600;
   }
-  .tabela-transacoes td:nth-child(6) {
+  .tabela-transacoes td:nth-child(7) {
     grid-area: acoes;
     padding-top: 4px;
   }

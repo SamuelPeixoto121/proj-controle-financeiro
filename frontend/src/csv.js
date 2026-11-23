@@ -1,4 +1,4 @@
-import { formatarData } from './formatar.js'
+import { formatarData, situacaoDe } from './formatar.js'
 
 // Um campo do CSV. Vai entre aspas se tiver ; aspas ou quebra de linha (aspas internas viram "").
 // Texto que começa com = + - @ ganha um ' na frente, para o Excel não tratar como fórmula.
@@ -12,16 +12,17 @@ function campo(valor) {
 // O caractere invisível no início (BOM) avisa ao Excel que o arquivo é UTF-8, para os acentos aparecerem certos.
 export function gerarCsv(transacoes) {
   const linhas = [
-    ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor'],
+    ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Situação'],
     ...transacoes.map((t) => [
       formatarData(t.data),
       t.descricao,
       t.categoria?.nome,
       t.tipo,
       t.valor.toFixed(2).replace('.', ','),
+      situacaoDe(t),
     ]),
   ]
-  return String.fromCharCode(0xfeff) +linhas.map((linha) => linha.map(campo).join(';')).join('\r\n') + '\r\n'
+  return String.fromCharCode(0xfeff) + linhas.map((linha) => linha.map(campo).join(';')).join('\r\n') + '\r\n'
 }
 
 // Faz o navegador baixar um arquivo com esse texto.

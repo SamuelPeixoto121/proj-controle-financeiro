@@ -17,6 +17,9 @@ public class Transacao
     public int CategoriaId { get; set; }
     public Categoria? Categoria { get; set; }
 
+    // Despesa já paga / receita já recebida. Falso = ainda pendente.
+    public bool Pago { get; set; }
+
     // Mesma série = criadas juntas com "Repetir por N meses". Vazio = transação avulsa.
     public Guid? SerieId { get; set; }
 

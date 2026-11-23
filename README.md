@@ -6,6 +6,7 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 
 - **Login**: cada pessoa cria a própria conta (e-mail e senha) e só vê os próprios dados, e pode trocar a senha depois
 - Cadastrar, editar e excluir **transações** (receitas e despesas), com descrição, valor, data e categoria
+- **Contas a pagar (pago / pendente)**: cada transação fica paga/recebida ou pendente (um clique alterna). A visão geral lista as contas pendentes do mês e as atrasadas, com os totais a pagar e a receber
 - **Compras parceladas**: ao criar, dá para parcelar o valor total em até 60x ("Geladeira (1/10)" ... "(10/10)", uma por mês). A 1ª parcela fica com os centavos que sobram, para a soma dar exatamente o total
 - **Transações recorrentes**: ao criar, dá para repetir a mesma transação por até 60 meses (por exemplo, o aluguel do ano todo de uma vez). As repetições formam uma **série** (marcada com ↻): ao editar ou excluir uma delas, dá para aplicar a mudança também aos meses seguintes
 - Cadastrar, editar e excluir **categorias** (não é possível excluir uma categoria que tenha transações)
@@ -122,6 +123,8 @@ As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os da
 | GET | `/transacoes/{id}` | Busca uma transação |
 | POST | `/transacoes` | Cria uma transação. Com `?repetir=12`, cria a mesma transação em 12 meses seguidos, de 1 a 60 (o dia 31 cai no último dia dos meses mais curtos). Com `?parcelas=10`, divide o `valor` total em 10 parcelas mensais numeradas (de 2 a 60) |
 | PUT | `/transacoes/{id}` | Edita uma transação. Com `?seguintes=true`, aplica descrição, valor, tipo e categoria também às transações seguintes da mesma série |
+| PUT | `/transacoes/{id}/pago` | Marca só a situação: `{ "pago": true }` (paga/recebida) ou `false` (pendente) |
+| GET | `/pendentes?mes=AAAA-MM` | Transações pendentes até o fim do mês (inclusive as atrasadas de antes), com os totais a pagar e a receber |
 | DELETE | `/transacoes/{id}` | Exclui uma transação. Com `?seguintes=true`, exclui também as seguintes da mesma série |
 | GET | `/saldo` | Total de receitas, total de despesas e saldo. Com `?mes=`, também o `acumulado` (saldo de tudo até o fim do mês) |
 | GET | `/despesas-por-categoria` | Total de despesas de cada categoria, do maior para o menor |
@@ -164,6 +167,7 @@ proj-controle-financeiro/
         ├── BotaoTema.jsx    Botão de tema claro/escuro
         ├── ResumoMensal.jsx Resumo mês a mês (gráfico e tabela)
         ├── MetasDoMes.jsx   Progresso das metas de gasto do mês
+        ├── ContasDoMes.jsx  Contas pendentes e atrasadas
         ├── DespesasPorCategoria.jsx  Gráfico de despesas por categoria
         ├── Transacoes.jsx   Tela de transações
         └── Categorias.jsx   Tela de categorias

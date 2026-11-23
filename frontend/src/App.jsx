@@ -3,6 +3,7 @@ import { api } from './api.js'
 import BotaoTema from './BotaoTema.jsx'
 import { formatarMes, formatarReais, mesAtual } from './formatar.js'
 import Categorias from './Categorias.jsx'
+import ContasDoMes from './ContasDoMes.jsx'
 import DespesasPorCategoria from './DespesasPorCategoria.jsx'
 import Login from './Login.jsx'
 import MetasDoMes from './MetasDoMes.jsx'
@@ -174,6 +175,7 @@ function App() {
               </div>
             )}
 
+            <ContasDoMes mes={mes} atualizacao={atualizacao} aoAlterar={aoAlterar} />
             <div className="grade-2">
               <MetasDoMes mes={mes} atualizacao={atualizacao} />
               <DespesasPorCategoria mes={mes} atualizacao={atualizacao} />

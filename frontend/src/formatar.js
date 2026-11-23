@@ -36,3 +36,11 @@ export function previaDeParcelas(valorTotal, parcelas) {
     ? `${n}x de ${reais(base)}`
     : `${n}x: a 1ª de ${reais(primeira)} e ${n - 1}x de ${reais(base)}`
 }
+
+// Situação de uma transação: "Paga", "Recebida", "A pagar", "A receber" ou "Atrasada"
+// (atrasada = ainda pendente e a data já passou).
+export function situacaoDe(transacao) {
+  if (transacao.pago) return transacao.tipo === 'Receita' ? 'Recebida' : 'Paga'
+  if (transacao.data.slice(0, 10) < hoje()) return 'Atrasada'
+  return transacao.tipo === 'Receita' ? 'A receber' : 'A pagar'
+}
