@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { NOMES_MESES, formatarReais, mesAtual } from './formatar.js'
+import GraficoAcumulado from './GraficoAcumulado.jsx'
 
 // Vermelho se negativo, verde se positivo, cor normal se zero.
 const corDoValor = (valor) => (valor < 0 ? 'despesa' : valor > 0 ? 'receita' : '')
@@ -70,6 +71,8 @@ function ResumoMensal({ mes, atualizacao }) {
               <span key={nome}>{nome}</span>
             ))}
           </div>
+
+          <GraficoAcumulado meses={meses} ano={ano} />
 
           <div className="tabela-rolagem">
           <table className="tabela-resumo">
