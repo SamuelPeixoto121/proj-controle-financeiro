@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from './api.js'
+import BotaoTema from './BotaoTema.jsx'
 
 // Tela de entrada: serve para entrar e para criar conta.
 function Login({ aoEntrar }) {
@@ -30,7 +31,10 @@ function Login({ aoEntrar }) {
 
   return (
     <main className="login card">
-      <h1>💰 Controle Financeiro</h1>
+      <div className="login-topo">
+        <h1>💰 Controle Financeiro</h1>
+        <BotaoTema />
+      </div>
       <h2>{criandoConta ? 'Criar conta' : 'Entrar'}</h2>
 
       <form onSubmit={enviar} className="formulario-vertical">

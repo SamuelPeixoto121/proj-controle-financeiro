@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
+import BotaoTema from './BotaoTema.jsx'
 import { formatarMes, formatarReais, mesAtual } from './formatar.js'
 import Categorias from './Categorias.jsx'
 import DespesasPorCategoria from './DespesasPorCategoria.jsx'
@@ -97,6 +98,7 @@ function App() {
         <div className="cabecalho-conteudo">
           <h1>💰 Controle Financeiro</h1>
           <span className="usuario">{usuario.email}</span>
+          <BotaoTema />
           <button
             onClick={() => {
               setTrocandoSenha(!trocandoSenha)
