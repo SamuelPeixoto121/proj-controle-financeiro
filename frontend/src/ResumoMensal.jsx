@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { NOMES_MESES, formatarReais, mesAtual } from './formatar.js'
+import BarraEconomia from './BarraEconomia.jsx'
 import ComparacaoAnual from './ComparacaoAnual.jsx'
 import GraficoAcumulado from './GraficoAcumulado.jsx'
 
@@ -12,11 +13,15 @@ function ResumoMensal({ mes, atualizacao }) {
   // Começa no ano do mês escolhido no filtro (ou no ano atual).
   const [ano, setAno] = useState(() => Number((mes || mesAtual()).slice(0, 4)))
   const [meses, setMeses] = useState([])
+  const [metaMensal, setMetaMensal] = useState(null) // meta de economia por mês (null = sem meta)
   const [erro, setErro] = useState('')
 
   useEffect(() => {
-    api(`/resumo-mensal?ano=${ano}`)
-      .then(setMeses)
+    Promise.all([api(`/resumo-mensal?ano=${ano}`), api('/meta-economia')])
+      .then(([lista, meta]) => {
+        setMeses(lista)
+        setMetaMensal(meta.metaMensal)
+      })
       .catch((e) => setErro(e.message))
   }, [ano, atualizacao])
 
@@ -48,6 +53,17 @@ function ResumoMensal({ mes, atualizacao }) {
 
       {maior > 0 && (
         <>
+          {metaMensal != null && (
+            <div className="economia-ano">
+              <h3>Meta de economia do ano</h3>
+              <BarraEconomia rotulo={`Previsão de guardar em ${ano}`} saldo={saldoTotal} meta={metaMensal * 12} />
+              <small className="texto-suave">
+                12 × {formatarReais(metaMensal)} por mês. Na tabela, <span className="meta-icone dentro">✔</span> marca
+                os meses que bateram a meta.
+              </small>
+            </div>
+          )}
+
           <ul className="legenda">
             <li>
               <span className="cor barra-receitas" /> Receitas
@@ -96,7 +112,14 @@ function ResumoMensal({ mes, atualizacao }) {
                   </td>
                   <td className="valor">{formatarReais(m.receitas)}</td>
                   <td className="valor">{formatarReais(m.despesas)}</td>
-                  <td className={`valor ${corDoValor(m.saldo)}`}>{formatarReais(m.saldo)}</td>
+                  <td className={`valor ${corDoValor(m.saldo)}`}>
+                    {metaMensal != null && m.saldo >= metaMensal && (
+                      <span className="meta-icone dentro" title="Bateu a meta de economia" aria-label="Bateu a meta de economia">
+                        ✔{' '}
+                      </span>
+                    )}
+                    {formatarReais(m.saldo)}
+                  </td>
                   <td className={`valor ${corDoValor(m.acumulado)}`}>
                     {formatarReais(m.acumulado)}
                   </td>

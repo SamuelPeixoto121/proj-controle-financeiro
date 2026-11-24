@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatarData, formatarMes, formatarReais, hoje, normalizar, previaDeParcelas, situacaoDe, variacao, vencimentoDaFatura, agruparFaturas } from './formatar.js'
+import { formatarData, formatarMes, formatarReais, hoje, normalizar, previaDeParcelas, situacaoDe, variacao, vencimentoDaFatura, agruparFaturas, progressoEconomia } from './formatar.js'
 
 // O Intl usa espaço não separável depois do "R$"; aqui ele vira espaço normal para comparar.
 const semNbsp = (texto) => texto.replace(/ /g, ' ')
@@ -118,5 +118,22 @@ describe('agruparFaturas (contas do mês)', () => {
     ])
     expect(r[0].valor).toBe(50.3) // sem 50.300000000000004
     expect(r[0].compras).toBe(2)
+  })
+})
+
+describe('progressoEconomia (meta de economia)', () => {
+  it('meta batida: barra cheia e quanto sobrou', () => {
+    expect(progressoEconomia(3930.62, 1000)).toEqual({ situacao: 'batida', porcentagem: 393, barra: 100, valor: 2930.62 })
+    expect(progressoEconomia(1000, 1000)).toEqual({ situacao: 'batida', porcentagem: 100, barra: 100, valor: 0 })
+  })
+
+  it('faltando: quanto falta, sem arredondar para 100%', () => {
+    expect(progressoEconomia(750, 1000)).toEqual({ situacao: 'faltando', porcentagem: 75, barra: 75, valor: 250 })
+    expect(progressoEconomia(999.99, 1000)).toEqual({ situacao: 'faltando', porcentagem: 99, barra: 99, valor: 0.01 })
+    expect(progressoEconomia(0, 1000)).toEqual({ situacao: 'faltando', porcentagem: 0, barra: 0, valor: 1000 })
+  })
+
+  it('mês negativo: barra vazia e o valor negativo', () => {
+    expect(progressoEconomia(-300.1, 1000)).toEqual({ situacao: 'negativo', porcentagem: 0, barra: 0, valor: -300.1 })
   })
 })

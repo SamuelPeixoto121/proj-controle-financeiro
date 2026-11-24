@@ -88,3 +88,16 @@ export function agruparFaturas(transacoes) {
   }
   return resultado
 }
+
+// Progresso da meta de economia: quanto do que se quer guardar o saldo já cobre.
+// situacao: 'batida' (valor = quanto sobrou além da meta), 'faltando' (valor = quanto falta)
+// ou 'negativo' (valor = o saldo, que está abaixo de zero). barra: de 0 a 100.
+export function progressoEconomia(saldo, meta) {
+  const centavos = (n) => Math.round(n * 100) / 100
+  if (saldo < 0) return { situacao: 'negativo', porcentagem: 0, barra: 0, valor: centavos(saldo) }
+  if (saldo >= meta)
+    return { situacao: 'batida', porcentagem: Math.round((saldo / meta) * 100), barra: 100, valor: centavos(saldo - meta) }
+  // Arredonda para baixo: R$ 999,99 de R$ 1.000 é 99%, não 100% (ainda falta).
+  const porcentagem = Math.floor((saldo / meta) * 100)
+  return { situacao: 'faltando', porcentagem, barra: porcentagem, valor: centavos(meta - saldo) }
+}

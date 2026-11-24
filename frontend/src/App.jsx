@@ -8,6 +8,7 @@ import ContasDoMes from './ContasDoMes.jsx'
 import DespesasPorCategoria from './DespesasPorCategoria.jsx'
 import Importar from './Importar.jsx'
 import Login from './Login.jsx'
+import MetaEconomia from './MetaEconomia.jsx'
 import MetasDoMes from './MetasDoMes.jsx'
 import ResumoMensal from './ResumoMensal.jsx'
 import Transacoes from './Transacoes.jsx'
@@ -183,6 +184,9 @@ function App() {
               </div>
             )}
 
+            {mes && saldo && (
+              <MetaEconomia mes={mes} saldoDoMes={saldo.saldo} atualizacao={atualizacao} aoAlterar={aoAlterar} />
+            )}
             <ContasDoMes
               mes={mes}
               atualizacao={atualizacao}

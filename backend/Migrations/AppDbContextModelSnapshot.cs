@@ -215,6 +215,10 @@ namespace ControleFinanceiro.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
 
+                    b.Property<decimal?>("MetaEconomiaMensal")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
                     b.Property<string>("SenhaHash")
                         .IsRequired()
                         .HasColumnType("longtext");

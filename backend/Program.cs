@@ -351,6 +351,28 @@ rotas.MapPut("/cartoes/{id}/faturas/{vencimento}/pago", async (int id, string ve
     return Results.Ok(new { compras = compras.Count });
 });
 
+// Meta de economia: quanto o usuário quer guardar por mês (vazio = sem meta).
+rotas.MapGet("/meta-economia", async (ClaimsPrincipal user, AppDbContext db) =>
+    await db.Usuarios.FindAsync(UsuarioId(user)) is Usuario usuario
+        ? Results.Ok(new { metaMensal = usuario.MetaEconomiaMensal })
+        : Results.Unauthorized());
+
+rotas.MapPut("/meta-economia", async (MetaEconomia entrada, ClaimsPrincipal user, AppDbContext db) =>
+{
+    if (entrada.MetaMensal is <= 0)
+        return Results.BadRequest("A meta deve ser maior que zero (ou vazia, para não ter meta).");
+    if (entrada.MetaMensal > 99_999_999.99m)
+        return Results.BadRequest("A meta é grande demais.");
+
+    var usuario = await db.Usuarios.FindAsync(UsuarioId(user));
+    if (usuario is null)
+        return Results.Unauthorized();
+
+    usuario.MetaEconomiaMensal = entrada.MetaMensal;
+    await db.SaveChangesAsync();
+    return Results.Ok(new { metaMensal = usuario.MetaEconomiaMensal });
+});
+
 // Contas (banco, carteira, poupança...), com o saldo de cada uma:
 // saldo inicial + receitas recebidas − despesas pagas + transferências que já aconteceram.
 rotas.MapGet("/contas", async (ClaimsPrincipal user, AppDbContext db) =>
@@ -1049,6 +1071,7 @@ static DateTime VencimentoDaFatura(Cartao cartao, DateTime compra)
 record Credenciais(string? Email, string? Senha);
 record TrocaDeSenha(string? SenhaAtual, string? NovaSenha);
 record Situacao(bool Pago);
+record MetaEconomia(decimal? MetaMensal);
 // Uma linha do extrato importado ("Linha" = número da linha no arquivo, para as mensagens de erro).
 record ItemImportacao(int Linha, string? Descricao, decimal Valor, DateTime Data, TipoTransacao Tipo, int CategoriaId);
 

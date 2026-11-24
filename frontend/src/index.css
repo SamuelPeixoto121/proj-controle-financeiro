@@ -895,6 +895,54 @@ tfoot th {
 .meta-barra.estourou {
   background: var(--status-critico);
 }
+/* Meta de economia: barra azul enquanto ainda falta (não é alerta, é progresso) */
+.meta-barra.andamento {
+  background: var(--principal);
+}
+.meta-icone.andamento {
+  color: var(--principal);
+}
+
+.economia {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.economia .meta-texto {
+  text-align: left;
+  white-space: normal;
+}
+
+.meta-economia-form {
+  flex-wrap: wrap;
+}
+
+.meta-economia-form input {
+  flex: 0 1 180px;
+}
+
+.meta-economia-nota {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+}
+
+.economia-ano {
+  margin: 4px 0 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--borda);
+}
+
+.economia-ano h3 {
+  font-size: 1rem;
+  margin: 0 0 6px;
+}
+
+.economia-ano > small {
+  display: block;
+  margin-top: 6px;
+}
+
 .meta-icone.dentro {
   color: var(--status-bom);
 }
