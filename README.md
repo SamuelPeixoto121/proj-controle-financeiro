@@ -1,5 +1,7 @@
 # Controle Financeiro
 
+[![Testes](https://github.com/SamuelPeixoto121/proj-controle-financeiro/actions/workflows/testes.yml/badge.svg)](https://github.com/SamuelPeixoto121/proj-controle-financeiro/actions/workflows/testes.yml)
+
 Controle financeiro pessoal: cadastro de receitas e despesas, organização por categorias e saldo total.
 
 ## Funcionalidades
@@ -101,6 +103,8 @@ Abra **http://localhost:5173** no navegador e clique em **Criar conta**. A API p
 ## Como rodar os testes
 
 O projeto tem testes automatizados para a API e para o front-end. Rode-os antes e depois de mudar o código: se algo quebrar, o teste mostra o que era esperado e o que veio.
+
+O GitHub também roda todos eles sozinho a cada `git push` (arquivo `.github/workflows/testes.yml`, com um MySQL descartável só para os testes): o resultado aparece como ✔/✖ ao lado de cada commit, na aba **Actions** e no selo no topo deste README.
 
 ### Testes da API (xUnit)
 
