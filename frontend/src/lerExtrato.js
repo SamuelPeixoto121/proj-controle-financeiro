@@ -10,7 +10,7 @@ export function decodificar(bytes) {
   } catch {
     texto = new TextDecoder('windows-1252').decode(bytes)
   }
-  return texto.replace(/^﻿/, '') // tira o BOM do Excel, se houver
+  return texto.replace(/^\uFEFF/, '') // tira o BOM do Excel, se houver
 }
 
 // Separador mais provável: o que mais aparece (fora de aspas) na primeira linha.

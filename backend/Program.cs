@@ -12,9 +12,12 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0))));
+// A conexão é lida na hora de usar (e não aqui em cima), para os testes automatizados
+// conseguirem trocá-la pela do banco de testes.
+builder.Services.AddDbContext<AppDbContext>((servicos, options) =>
+    options.UseMySql(
+        servicos.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection"),
+        new MySqlServerVersion(new Version(8, 0))));
 
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -50,15 +53,19 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization();
 
 // Contra força bruta: cada IP pode tentar entrar ou se cadastrar 5 vezes por minuto.
+// (O número vem da configuração "LimiteLogin:PorMinuto", 5 se não houver; os testes automatizados aumentam.)
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.OnRejected = (context, cancelamento) => new ValueTask(
         context.HttpContext.Response.WriteAsJsonAsync("Muitas tentativas. Aguarde um minuto e tente de novo.", cancelamento));
     options.AddPolicy("login", http =>
-        RateLimitPartition.GetFixedWindowLimiter(
+    {
+        var limite = http.RequestServices.GetRequiredService<IConfiguration>().GetValue("LimiteLogin:PorMinuto", 5);
+        return RateLimitPartition.GetFixedWindowLimiter(
             http.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
-            _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1) }));
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = limite, Window = TimeSpan.FromMinutes(1) });
+    });
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -624,3 +631,6 @@ record TrocaDeSenha(string? SenhaAtual, string? NovaSenha);
 record Situacao(bool Pago);
 // Uma linha do extrato importado ("Linha" = número da linha no arquivo, para as mensagens de erro).
 record ItemImportacao(int Linha, string? Descricao, decimal Valor, DateTime Data, TipoTransacao Tipo, int CategoriaId);
+
+// Deixa os testes automatizados (pasta tests) ligarem esta API em memória.
+public partial class Program { }

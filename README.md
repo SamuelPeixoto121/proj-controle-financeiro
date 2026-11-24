@@ -98,6 +98,32 @@ Abra **http://localhost:5173** no navegador e clique em **Criar conta**. A API p
 
 > Se o banco já tinha categorias e transações de antes do login existir, elas passam a ser da **primeira conta criada**.
 
+## Como rodar os testes
+
+O projeto tem testes automatizados para a API e para o front-end. Rode-os antes e depois de mudar o código: se algo quebrar, o teste mostra o que era esperado e o que veio.
+
+### Testes da API (xUnit)
+
+Precisam do **MySQL ligado** e da conexão configurada nos User Secrets (passo 2 acima). A API não precisa estar rodando.
+
+```powershell
+cd tests/ControleFinanceiro.Tests
+dotnet test
+```
+
+- Os testes ligam a API em memória e usam **um banco só deles, `controle_financeiro_testes`**, criado do zero no começo e apagado no fim. O banco `controle_financeiro` nunca é usado: se a conexão apontar para outro banco, os testes se recusam a rodar.
+- Cobrem login e senha (inclusive o limite de 5 tentativas), categorias e metas, transações (repetir, parcelas e centavos, séries, pago/pendente, importação) e os relatórios (saldo, saldo real, acumulado, resumo mensal, metas e contas pendentes), além do isolamento entre usuários.
+- Se a API estiver rodando com `dotnet run`, pare-a antes (Ctrl+C): o `dotnet test` compila a API, e o Windows não deixa sobrescrever o programa em uso.
+
+### Testes do front-end (Vitest)
+
+```powershell
+cd frontend
+npm test
+```
+
+Testam as funções que fazem contas e leem dados: leitura de extratos CSV (números, datas, separadores, formatos de banco), prévia das parcelas, situação paga/pendente/atrasada, busca sem acentos, exportação para CSV e as posições do gráfico do acumulado. Os arquivos de teste ficam ao lado do código, com o nome terminando em `.test.js`.
+
 ## Rotas da API
 
 O login usa um cookie de sessão (`HttpOnly`), que o navegador envia sozinho em cada requisição.
@@ -159,7 +185,9 @@ proj-controle-financeiro/
 │   ├── Migrations/          Migrations do Entity Framework
 │   ├── Models/              Usuario, Categoria, Transacao e TipoTransacao
 │   └── Program.cs           Configuração da API, login e todas as rotas
-└── frontend/                Front-end em React
+├── tests/
+│   └── ControleFinanceiro.Tests/  Testes automatizados da API (xUnit)
+└── frontend/                Front-end em React (os testes ficam em src/*.test.js)
     └── src/
         ├── api.js           Função que chama a API e trata os erros
         ├── formatar.js      Formatação de valores (R$) e datas
