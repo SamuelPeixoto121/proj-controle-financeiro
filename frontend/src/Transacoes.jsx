@@ -18,6 +18,7 @@ const formularioVazio = () => ({
   tipo: 'Despesa',
   categoriaId: '',
   cartaoId: '', // vazio = conta/dinheiro
+  contaId: '', // vazio = a conta principal
   pago: true,
 })
 
@@ -45,6 +46,7 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
   const [transacoes, setTransacoes] = useState([])
   const [categorias, setCategorias] = useState([])
   const [cartoes, setCartoes] = useState([])
+  const [contas, setContas] = useState([])
   const [formulario, setFormulario] = useState(formularioVazio)
   const [editandoId, setEditandoId] = useState(null)
   const [erro, setErro] = useState('')
@@ -59,14 +61,23 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
   const [filtroCategoria, setFiltroCategoria] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroSituacao, setFiltroSituacao] = useState('')
+  const [filtroConta, setFiltroConta] = useState('')
+  // Com uma conta só, o campo e o filtro de conta ficam escondidos.
+  const variasContas = contas.length > 1
 
   // Recarrega sempre que algo mudar em qualquer parte da tela ou o mês mudar.
   useEffect(() => {
-    Promise.all([api(mes ? `/transacoes?mes=${mes}` : '/transacoes'), api('/categorias'), api('/cartoes')])
-      .then(([listaTransacoes, listaCategorias, listaCartoes]) => {
+    Promise.all([
+      api(mes ? `/transacoes?mes=${mes}` : '/transacoes'),
+      api('/categorias'),
+      api('/cartoes'),
+      api('/contas'),
+    ])
+      .then(([listaTransacoes, listaCategorias, listaCartoes, listaContas]) => {
         setTransacoes(listaTransacoes)
         setCategorias(listaCategorias)
         setCartoes(listaCartoes)
+        setContas(listaContas)
       })
       .catch((e) => setErro(e.message))
   }, [mes, atualizacao])
@@ -82,9 +93,10 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
       normalizar(t.descricao).includes(termo) &&
       (!filtroCategoria || t.categoriaId === Number(filtroCategoria)) &&
       (!filtroTipo || t.tipo === filtroTipo) &&
-      (!filtroSituacao || (filtroSituacao === 'pagas' ? t.pago : !t.pago)),
+      (!filtroSituacao || (filtroSituacao === 'pagas' ? t.pago : !t.pago)) &&
+      (!filtroConta || t.contaId === Number(filtroConta)),
   )
-  const filtrando = busca || filtroCategoria || filtroTipo || filtroSituacao
+  const filtrando = busca || filtroCategoria || filtroTipo || filtroSituacao || filtroConta
   const somar = (tipo) =>
     filtradas.filter((t) => t.tipo === tipo).reduce((soma, t) => soma + t.valor, 0)
 
@@ -98,6 +110,7 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
     setFiltroCategoria('')
     setFiltroTipo('')
     setFiltroSituacao('')
+    setFiltroConta('')
   }
 
   function alterarCampo(evento) {
@@ -130,6 +143,7 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
       valor: Number(formulario.valor),
       categoriaId: Number(formulario.categoriaId),
       cartaoId: formulario.cartaoId ? Number(formulario.cartaoId) : null,
+      contaId: formulario.contaId ? Number(formulario.contaId) : null,
     }
     try {
       if (editandoId) {
@@ -156,6 +170,7 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
       tipo: transacao.tipo,
       categoriaId: String(transacao.categoriaId),
       cartaoId: transacao.cartaoId ? String(transacao.cartaoId) : '',
+      contaId: transacao.contaId ? String(transacao.contaId) : '',
       pago: transacao.pago,
     })
     setEditandoSerie(transacao.serieId != null)
@@ -247,6 +262,18 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
                 {cartoes.map((cartao) => (
                   <option key={cartao.id} value={cartao.id}>
                     💳 {cartao.nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {variasContas && !formulario.cartaoId && (
+            <label className="campo">
+              Conta
+              <select name="contaId" value={formulario.contaId || String(contas[0].id)} onChange={alterarCampo}>
+                {contas.map((conta) => (
+                  <option key={conta.id} value={conta.id}>
+                    {conta.nome}
                   </option>
                 ))}
               </select>
@@ -368,6 +395,20 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
                 <option value="pagas">Só pagas</option>
                 <option value="pendentes">Só pendentes</option>
               </select>
+              {variasContas && (
+                <select
+                  value={filtroConta}
+                  onChange={(e) => setFiltroConta(e.target.value)}
+                  aria-label="Filtrar por conta"
+                >
+                  <option value="">Todas as contas</option>
+                  {contas.map((conta) => (
+                    <option key={conta.id} value={conta.id}>
+                      {conta.nome}
+                    </option>
+                  ))}
+                </select>
+              )}
               {filtrando && (
                 <button type="button" onClick={limparFiltros}>
                   Limpar
@@ -403,10 +444,13 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
                               ↻
                             </span>
                           )}
-                          {transacao.cartao && (
+                          {transacao.cartao ? (
                             <small className="compra-cartao">
                               💳 {transacao.cartao.nome} · compra em {formatarData(transacao.dataCompra)}
                             </small>
+                          ) : (
+                            variasContas &&
+                            transacao.conta && <small className="compra-cartao">{transacao.conta.nome}</small>
                           )}
                         </td>
                         <td>{transacao.categoria?.nome}</td>

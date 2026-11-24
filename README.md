@@ -23,9 +23,11 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 - **Gráfico de despesas por categoria**: barras da maior para a menor despesa, com valor e porcentagem
 - **Resumo mês a mês**: receitas e despesas de cada mês do ano lado a lado, em gráfico e em tabela com o saldo de cada mês, e um gráfico de linha com a evolução do saldo acumulado (linha tracejada nos meses que ainda não chegaram)
 - **Comparação com o ano anterior**: receitas, despesas e saldo do ano com a variação em relação ao ano anterior, e as despesas por categoria dos dois anos (as que mais mudaram primeiro). No ano atual, compara o mesmo período (jan até o mês atual) nos dois anos
+- **Contas**: cada usuário começa com a "Conta principal" e pode criar outras (banco, carteira, poupança), cada uma com saldo inicial. A aba Contas mostra o saldo de cada uma (saldo inicial + o que já foi recebido − o que já foi pago ± transferências) e o total. Ao lançar uma transação, escolhe-se a conta (o campo só aparece com mais de uma); a lista de transações pode ser filtrada por conta, e a importação de extrato vai para a conta escolhida
+- **Transferências entre contas**: tiram de uma conta e põem na outra, sem contar como receita nem despesa; com data futura ficam agendadas e só mudam os saldos quando o dia chega
 - **Cartão de crédito**: cadastre o cartão com o dia do fechamento e do vencimento e escolha-o em "Pagamento" ao lançar uma despesa. A compra conta no mês em que a fatura vence (compra no dia do fechamento ou depois entra na fatura seguinte); parcelado no cartão põe uma parcela em cada fatura. A aba Cartões mostra cada fatura (total, compras e situação: Aberta, Fechada, Paga ou Atrasada) com o botão "Pagar fatura", e nas contas do mês a fatura aparece numa linha só
 
-A tela é dividida em cinco abas: **Visão geral** (números do mês, contas, metas, gráficos e resumo mês a mês), **Transações**, **Cartões**, **Categorias** e **Importar**. O layout se adapta ao celular e tem **modo escuro**: por padrão segue o tema do sistema, e o botão 🌙/☀️ no topo troca na hora (a escolha fica guardada no navegador).
+A tela é dividida em cinco abas: **Visão geral** (números do mês, contas a pagar, metas, gráficos e resumo mês a mês), **Transações**, **Contas** (contas, transferências, cartões e faturas), **Categorias** e **Importar**. O layout se adapta ao celular e tem **modo escuro**: por padrão segue o tema do sistema, e o botão 🌙/☀️ no topo troca na hora (a escolha fica guardada no navegador).
 
 ## Tecnologias
 
@@ -180,21 +182,28 @@ As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os da
 | POST | `/categorias` | Cria uma categoria (`{ "nome": "Mercado", "metaMensal": 800 }`; a meta é opcional) |
 | PUT | `/categorias/{id}` | Edita o nome e a meta de uma categoria (`metaMensal: null` remove a meta) |
 | DELETE | `/categorias/{id}` | Exclui uma categoria (409 se tiver transações) |
+| GET | `/contas` | Lista as contas com o saldo de cada uma |
+| POST | `/contas` | Cria uma conta (`nome` e `saldoInicial`, que pode ser negativo) |
+| PUT | `/contas/{id}` | Edita o nome e o saldo inicial de uma conta |
+| DELETE | `/contas/{id}` | Exclui uma conta (409 se tiver transações, transferências ou cartões, ou se for a última) |
+| GET | `/transferencias` | Lista as transferências, da mais nova para a mais antiga (`agendada` = data futura) |
+| POST | `/transferencias` | Cria uma transferência (`contaOrigemId`, `contaDestinoId`, `valor`, `data` e `descricao` opcional) |
+| DELETE | `/transferencias/{id}` | Exclui uma transferência |
 | GET | `/cartoes` | Lista os cartões de crédito |
-| POST | `/cartoes` | Cria um cartão (`nome`, `diaFechamento` e `diaVencimento`, de 1 a 28) |
+| POST | `/cartoes` | Cria um cartão (`nome`, `diaFechamento` e `diaVencimento`, de 1 a 28, e `contaId` da conta que paga a fatura; vazio = a principal) |
 | PUT | `/cartoes/{id}` | Edita um cartão (os novos dias valem para as próximas compras) |
 | DELETE | `/cartoes/{id}` | Exclui um cartão (409 se tiver compras) |
 | GET | `/cartoes/{id}/faturas` | Faturas do cartão: vencimento, fechamento, total, situação e compras |
 | PUT | `/cartoes/{id}/faturas/{AAAA-MM-DD}/pago` | Marca todas as compras da fatura como pagas (`{ "pago": true }`) ou pendentes |
 | GET | `/transacoes` | Lista as transações, da mais recente para a mais antiga |
 | GET | `/transacoes/{id}` | Busca uma transação |
-| POST | `/transacoes` | Cria uma transação. Com `?repetir=12`, cria a mesma transação em 12 meses seguidos, de 1 a 60 (o dia 31 cai no último dia dos meses mais curtos). Com `?parcelas=10`, divide o `valor` total em 10 parcelas mensais numeradas (de 2 a 60). Com `cartaoId`, a `data` enviada é a da compra: a API guarda em `dataCompra` e põe em `data` o vencimento da fatura |
+| POST | `/transacoes` | Cria uma transação. Com `?repetir=12`, cria a mesma transação em 12 meses seguidos, de 1 a 60 (o dia 31 cai no último dia dos meses mais curtos). Com `?parcelas=10`, divide o `valor` total em 10 parcelas mensais numeradas (de 2 a 60). Sem `contaId`, vai para a conta principal (no cartão, para a conta que paga a fatura). Com `cartaoId`, a `data` enviada é a da compra: a API guarda em `dataCompra` e põe em `data` o vencimento da fatura |
 | PUT | `/transacoes/{id}` | Edita uma transação. Com `?seguintes=true`, aplica descrição, valor, tipo e categoria também às transações seguintes da mesma série |
-| POST | `/transacoes/importar` | Importa uma lista de transações de uma vez, já como pagas (todas ou nenhuma; até 2.000). Cada item: `{ "linha", "descricao", "valor", "data", "tipo", "categoriaId" }`; um erro responde 400 com o número da linha |
+| POST | `/transacoes/importar` | Importa uma lista de transações de uma vez, já como pagas (todas ou nenhuma; até 2.000). Cada item: `{ "linha", "descricao", "valor", "data", "tipo", "categoriaId" }`; um erro responde 400 com o número da linha. Com `?contaId=`, as transações vão para essa conta (sem isso, para a principal) |
 | PUT | `/transacoes/{id}/pago` | Marca só a situação: `{ "pago": true }` (paga/recebida) ou `false` (pendente) |
 | GET | `/pendentes?mes=AAAA-MM` | Transações pendentes até o fim do mês (inclusive as atrasadas de antes), com os totais a pagar e a receber |
 | DELETE | `/transacoes/{id}` | Exclui uma transação. Com `?seguintes=true`, exclui também as seguintes da mesma série |
-| GET | `/saldo` | Total de receitas, total de despesas e saldo. Com `?mes=`, também o `acumulado` (saldo de tudo até o fim do mês). Sempre traz o `saldoReal` (só o que já foi pago e recebido, de todas as datas) |
+| GET | `/saldo` | Total de receitas, total de despesas e saldo. Com `?mes=`, também o `acumulado` (saldo de tudo até o fim do mês). Sempre traz o `saldoReal` (saldos iniciais das contas + o que já foi pago e recebido, de todas as datas). O `acumulado` também começa nos saldos iniciais |
 | GET | `/despesas-por-categoria` | Total de despesas de cada categoria, do maior para o menor |
 | GET | `/metas?mes=AAAA-MM` | Para cada categoria com meta: a meta e o gasto do mês (o mês é obrigatório) |
 | GET | `/resumo-mensal?ano=AAAA` | Receitas, despesas, saldo e acumulado de cada um dos 12 meses do ano (sem `ano`, usa o ano atual) |
@@ -236,7 +245,8 @@ proj-controle-financeiro/
         ├── lerExtrato.js    Leitura de extratos CSV (separador, números, datas, colunas)
         ├── Importar.jsx     Tela de importação de extrato
         ├── App.jsx          Cabeçalho, abas, filtro por mês e cartões de saldo
-        ├── Cartoes.jsx      Cartões de crédito e faturas
+        ├── Contas.jsx       Aba Contas: saldo de cada conta e transferências
+        ├── Cartoes.jsx      Cartões de crédito e faturas (dentro da aba Contas)
         ├── Login.jsx        Tela de entrar e criar conta
         ├── TrocarSenha.jsx  Formulário de troca de senha
         ├── BotaoTema.jsx    Botão de tema claro/escuro

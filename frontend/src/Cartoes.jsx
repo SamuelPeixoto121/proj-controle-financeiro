@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { formatarData, formatarReais } from './formatar.js'
 
-const cartaoVazio = { nome: '', diaFechamento: '', diaVencimento: '' }
+const cartaoVazio = { nome: '', diaFechamento: '', diaVencimento: '', contaId: '' }
 
 // Situação da fatura: ícone + texto (não só cor).
 const SITUACOES = {
@@ -13,7 +13,7 @@ const SITUACOES = {
 }
 
 // Campos do cartão (usados para cadastrar e para editar).
-function CamposCartao({ valores, aoMudar }) {
+function CamposCartao({ valores, aoMudar, contas }) {
   const mudar = (campo) => (e) => aoMudar({ ...valores, [campo]: e.target.value })
   return (
     <>
@@ -29,6 +29,19 @@ function CamposCartao({ valores, aoMudar }) {
         Vence dia
         <input type="number" min="1" max="28" value={valores.diaVencimento} onChange={mudar('diaVencimento')} />
       </label>
+      {contas.length > 1 && (
+        <label className="campo">
+          Fatura paga pela conta
+          <select value={valores.contaId ?? ''} onChange={mudar('contaId')}>
+            <option value="">{contas[0].nome} (principal)</option>
+            {contas.slice(1).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
     </>
   )
 }
@@ -37,9 +50,10 @@ const corpoDoCartao = (v) => ({
   nome: v.nome,
   diaFechamento: Number(v.diaFechamento),
   diaVencimento: Number(v.diaVencimento),
+  contaId: v.contaId ? Number(v.contaId) : null,
 })
 
-function Cartoes({ atualizacao, aoAlterar }) {
+function Cartoes({ contas, atualizacao, aoAlterar }) {
   const [cartoes, setCartoes] = useState([])
   const [novo, setNovo] = useState(cartaoVazio)
   const [editandoId, setEditandoId] = useState(null)
@@ -127,7 +141,7 @@ function Cartoes({ atualizacao, aoAlterar }) {
         </p>
 
         <form onSubmit={criar} className="formulario">
-          <CamposCartao valores={novo} aoMudar={setNovo} />
+          <CamposCartao valores={novo} aoMudar={setNovo} contas={contas} />
           <div className="formulario-botoes">
             <button type="submit" className="principal">
               Adicionar
@@ -144,7 +158,7 @@ function Cartoes({ atualizacao, aoAlterar }) {
             cartao.id === editandoId ? (
               <li key={cartao.id}>
                 <form onSubmit={salvarEdicao} className="formulario">
-                  <CamposCartao valores={editado} aoMudar={setEditado} />
+                  <CamposCartao valores={editado} aoMudar={setEditado} contas={contas} />
                   <div className="formulario-botoes">
                     <button type="submit" className="principal">
                       Salvar
@@ -165,11 +179,16 @@ function Cartoes({ atualizacao, aoAlterar }) {
                   <small className="meta-info dias-cartao">
                     fecha {cartao.diaFechamento} · vence {cartao.diaVencimento}
                   </small>
+                  {contas.length > 1 && (
+                    <small className="texto-suave">
+                      fatura paga pela conta {contas.find((c) => c.id === cartao.contaId)?.nome ?? contas[0]?.nome}
+                    </small>
+                  )}
                 </span>
                 <button
                   onClick={() => {
                     setEditandoId(cartao.id)
-                    setEditado({ ...cartao })
+                    setEditado({ ...cartao, contaId: cartao.contaId ? String(cartao.contaId) : '' })
                     setErro('')
                   }}
                 >

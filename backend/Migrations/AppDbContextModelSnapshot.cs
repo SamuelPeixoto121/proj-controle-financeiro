@@ -30,6 +30,9 @@ namespace ControleFinanceiro.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("ContaId")
+                        .HasColumnType("int");
+
                     b.Property<int>("DiaFechamento")
                         .HasColumnType("int");
 
@@ -44,6 +47,8 @@ namespace ControleFinanceiro.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ContaId");
 
                     b.HasIndex("UsuarioId");
 
@@ -76,6 +81,32 @@ namespace ControleFinanceiro.Migrations
                     b.ToTable("Categorias");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Models.Conta", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<decimal>("SaldoInicial")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("Contas");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Models.Transacao", b =>
                 {
                     b.Property<int>("Id")
@@ -88,6 +119,9 @@ namespace ControleFinanceiro.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("CategoriaId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ContaId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("Data")
@@ -122,9 +156,50 @@ namespace ControleFinanceiro.Migrations
 
                     b.HasIndex("CategoriaId");
 
+                    b.HasIndex("ContaId");
+
                     b.HasIndex("UsuarioId");
 
                     b.ToTable("Transacoes");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Models.Transferencia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ContaDestinoId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ContaOrigemId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Data")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContaDestinoId");
+
+                    b.HasIndex("ContaOrigemId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("Transferencias");
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Models.Usuario", b =>
@@ -154,6 +229,11 @@ namespace ControleFinanceiro.Migrations
 
             modelBuilder.Entity("ControleFinanceiro.Models.Cartao", b =>
                 {
+                    b.HasOne("ControleFinanceiro.Models.Conta", null)
+                        .WithMany()
+                        .HasForeignKey("ContaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ControleFinanceiro.Models.Usuario", null)
                         .WithMany()
                         .HasForeignKey("UsuarioId")
@@ -161,6 +241,14 @@ namespace ControleFinanceiro.Migrations
                 });
 
             modelBuilder.Entity("ControleFinanceiro.Models.Categoria", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Models.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Models.Conta", b =>
                 {
                     b.HasOne("ControleFinanceiro.Models.Usuario", null)
                         .WithMany()
@@ -181,6 +269,11 @@ namespace ControleFinanceiro.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("ControleFinanceiro.Models.Conta", "Conta")
+                        .WithMany()
+                        .HasForeignKey("ContaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ControleFinanceiro.Models.Usuario", null)
                         .WithMany()
                         .HasForeignKey("UsuarioId")
@@ -189,6 +282,28 @@ namespace ControleFinanceiro.Migrations
                     b.Navigation("Cartao");
 
                     b.Navigation("Categoria");
+
+                    b.Navigation("Conta");
+                });
+
+            modelBuilder.Entity("ControleFinanceiro.Models.Transferencia", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Models.Conta", null)
+                        .WithMany()
+                        .HasForeignKey("ContaDestinoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Models.Conta", null)
+                        .WithMany()
+                        .HasForeignKey("ContaOrigemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ControleFinanceiro.Models.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 #pragma warning restore 612, 618
         }

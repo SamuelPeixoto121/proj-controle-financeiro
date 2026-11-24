@@ -12,6 +12,9 @@ public class Cartao
     public int DiaFechamento { get; set; }
     public int DiaVencimento { get; set; }
 
+    // Conta que paga a fatura (as compras no cartão saem dela). Vazio = a conta principal.
+    public int? ContaId { get; set; }
+
     [JsonIgnore]
     public int? UsuarioId { get; set; }
 }

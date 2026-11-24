@@ -27,6 +27,8 @@ function SeletorColuna({ rotulo, cabecalho, valor, aoMudar }) {
 // Importação de extrato CSV: escolher o arquivo, conferir as colunas, revisar e importar.
 function Importar({ aoAlterar }) {
   const [categorias, setCategorias] = useState([])
+  const [contas, setContas] = useState([])
+  const [contaId, setContaId] = useState('') // vazio = a conta principal
   const [existentes, setExistentes] = useState(new Set())
   const [nomeArquivo, setNomeArquivo] = useState('')
   const [extrato, setExtrato] = useState(null) // { cabecalho, linhas } do arquivo
@@ -44,9 +46,10 @@ function Importar({ aoAlterar }) {
 
   // Categorias (para escolher) e transações que já existem (para achar duplicadas).
   useEffect(() => {
-    Promise.all([api('/categorias'), api('/transacoes')])
-      .then(([listaCategorias, listaTransacoes]) => {
+    Promise.all([api('/categorias'), api('/transacoes'), api('/contas')])
+      .then(([listaCategorias, listaTransacoes, listaContas]) => {
         setCategorias(listaCategorias)
+        setContas(listaContas)
         setExistentes(new Set(listaTransacoes.map(chave)))
       })
       .catch((e) => setErro(e.message))
@@ -110,7 +113,7 @@ function Importar({ aoAlterar }) {
         tipo: l.tipo,
         categoriaId: Number(l.categoriaId),
       }))
-      const resposta = await api('/transacoes/importar', { method: 'POST', body: corpo })
+      const resposta = await api(`/transacoes/importar${contaId ? `?contaId=${contaId}` : ''}`, { method: 'POST', body: corpo })
       const lista = await api('/transacoes')
       setExistentes(new Set(lista.map(chave)))
       recomecar()
@@ -213,6 +216,18 @@ function Importar({ aoAlterar }) {
                 ))}
               </select>
             </label>
+            {contas.length > 1 && (
+              <label className="campo">
+                Importar para a conta
+                <select value={contaId || String(contas[0].id)} onChange={(e) => setContaId(e.target.value)}>
+                  {contas.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
 
           <div className="tabela-rolagem">

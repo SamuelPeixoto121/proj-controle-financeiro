@@ -29,6 +29,10 @@ public class Transacao
     public Cartao? Cartao { get; set; }
     public DateTime? DataCompra { get; set; }
 
+    // Conta de onde o dinheiro sai (ou para onde entra). No cartão, a conta que paga a fatura.
+    public int? ContaId { get; set; }
+    public Conta? Conta { get; set; }
+
     // Dono da transação. Fica vazio só nos dados antigos, até o primeiro cadastro.
     [JsonIgnore]
     public int? UsuarioId { get; set; }

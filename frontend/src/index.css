@@ -603,6 +603,28 @@ tfoot th {
   white-space: nowrap;
 }
 
+/* Contas: nome ...... saldo [Editar] [Excluir], e o total embaixo */
+.contas-lista .valor {
+  font-size: 1.05rem;
+}
+
+.contas-lista .acoes {
+  min-width: 150px;
+  justify-content: flex-end;
+}
+
+.contas-total {
+  border-top: 2px solid var(--borda);
+  font-weight: 700;
+}
+
+/* Transferência com data futura */
+.agendada {
+  display: inline-block;
+  margin-left: 8px;
+  border: 1px dashed var(--borda);
+}
+
 /* Fatura do cartão: total, situação e botão de pagar */
 .fatura-resumo {
   display: flex;
@@ -711,8 +733,15 @@ tfoot th {
 }
 
 .categoria-padrao {
-  max-width: 300px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 8px;
+}
+
+.categoria-padrao .campo {
+  flex: 1 1 220px;
+  max-width: 300px;
 }
 
 /* =========================================================
@@ -1242,6 +1271,67 @@ tfoot th {
   .tabela-resumo th:nth-child(3),
   .tabela-resumo td:nth-child(3) {
     display: none;
+  }
+
+  /* Contas: nome e saldo em cima; botões embaixo */
+  .contas-lista li.linha {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 10px;
+  }
+
+  .contas-lista .acoes {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  .contas-lista .meta-info {
+    white-space: nowrap;
+  }
+
+  /* Transferências: cada linha vira um bloco
+     Itaú → Poupança ........ R$ 1.000,00
+     06/12/2026 · Guardar         [Excluir] */
+  .tabela-transferencias thead {
+    display: none;
+  }
+
+  .tabela-transferencias tr {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'contas contas valor'
+      'data desc acoes';
+    gap: 4px 10px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--borda);
+  }
+
+  .tabela-transferencias td {
+    border: none;
+    padding: 0;
+  }
+
+  .tabela-transferencias td:nth-child(1) {
+    grid-area: data;
+    color: var(--texto-suave);
+    font-size: 0.85rem;
+  }
+  .tabela-transferencias td:nth-child(2) {
+    grid-area: contas;
+    font-weight: 600;
+  }
+  .tabela-transferencias td:nth-child(3) {
+    grid-area: desc;
+    color: var(--texto-suave);
+    font-size: 0.85rem;
+  }
+  .tabela-transferencias td:nth-child(4) {
+    grid-area: valor;
+  }
+  .tabela-transferencias td:nth-child(5) {
+    grid-area: acoes;
   }
 
   /* Fatura: no celular, sem a coluna Categoria */

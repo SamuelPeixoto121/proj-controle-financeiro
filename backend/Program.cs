@@ -107,13 +107,18 @@ app.MapPost("/auth/cadastro", async (Credenciais entrada, AppDbContext db, HttpC
     db.Usuarios.Add(usuario);
     await db.SaveChangesAsync();
 
+    // Todo usuário começa com uma conta (dá para renomear e criar outras depois).
+    var conta = new Conta { Nome = "Conta principal", UsuarioId = usuario.Id };
+    db.Contas.Add(conta);
+    await db.SaveChangesAsync();
+
     // Os dados criados antes do login existir passam a ser do primeiro usuário.
     if (primeiroUsuario)
     {
         await db.Categorias.Where(c => c.UsuarioId == null)
             .ExecuteUpdateAsync(s => s.SetProperty(c => c.UsuarioId, usuario.Id));
         await db.Transacoes.Where(t => t.UsuarioId == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(t => t.UsuarioId, usuario.Id));
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.UsuarioId, usuario.Id).SetProperty(t => t.ContaId, conta.Id));
     }
 
     await Entrar(http, usuario);
@@ -241,11 +246,15 @@ rotas.MapPost("/cartoes", async (Cartao entrada, ClaimsPrincipal user, AppDbCont
     if (erro is not null)
         return Results.BadRequest(erro);
 
+    if (entrada.ContaId is not null && !await ContaDoUsuario(db, UsuarioId(user), entrada.ContaId.Value))
+        return Results.BadRequest("Conta não encontrada.");
+
     var cartao = new Cartao
     {
         Nome = entrada.Nome.Trim(),
         DiaFechamento = entrada.DiaFechamento,
         DiaVencimento = entrada.DiaVencimento,
+        ContaId = entrada.ContaId,
         UsuarioId = UsuarioId(user),
     };
     db.Cartoes.Add(cartao);
@@ -265,9 +274,13 @@ rotas.MapPut("/cartoes/{id}", async (int id, Cartao entrada, ClaimsPrincipal use
     if (cartao is null)
         return Results.NotFound();
 
+    if (entrada.ContaId is not null && !await ContaDoUsuario(db, usuarioId, entrada.ContaId.Value))
+        return Results.BadRequest("Conta não encontrada.");
+
     cartao.Nome = entrada.Nome.Trim();
     cartao.DiaFechamento = entrada.DiaFechamento;
     cartao.DiaVencimento = entrada.DiaVencimento;
+    cartao.ContaId = entrada.ContaId;
     await db.SaveChangesAsync();
     return Results.Ok(cartao);
 });
@@ -338,10 +351,149 @@ rotas.MapPut("/cartoes/{id}/faturas/{vencimento}/pago", async (int id, string ve
     return Results.Ok(new { compras = compras.Count });
 });
 
+// Contas (banco, carteira, poupança...), com o saldo de cada uma:
+// saldo inicial + receitas recebidas − despesas pagas + transferências que já aconteceram.
+rotas.MapGet("/contas", async (ClaimsPrincipal user, AppDbContext db) =>
+{
+    var usuarioId = UsuarioId(user);
+    var hoje = DateTime.Today;
+    var contas = await db.Contas.Where(c => c.UsuarioId == usuarioId).OrderBy(c => c.Id).ToListAsync();
+    var movimento = await db.Transacoes
+        .Where(t => t.UsuarioId == usuarioId && t.Pago && t.ContaId != null)
+        .GroupBy(t => t.ContaId)
+        .Select(g => new { ContaId = g.Key, Total = g.Sum(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor) })
+        .ToListAsync();
+    var transferencias = await db.Transferencias.Where(t => t.UsuarioId == usuarioId && t.Data <= hoje).ToListAsync();
+
+    return contas.Select(c => new
+    {
+        c.Id,
+        c.Nome,
+        c.SaldoInicial,
+        saldo = c.SaldoInicial
+            + movimento.Where(m => m.ContaId == c.Id).Sum(m => m.Total)
+            + transferencias.Where(t => t.ContaDestinoId == c.Id).Sum(t => t.Valor)
+            - transferencias.Where(t => t.ContaOrigemId == c.Id).Sum(t => t.Valor),
+    });
+});
+
+rotas.MapPost("/contas", async (Conta entrada, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var erro = ValidarConta(entrada);
+    if (erro is not null)
+        return Results.BadRequest(erro);
+
+    var conta = new Conta { Nome = entrada.Nome.Trim(), SaldoInicial = entrada.SaldoInicial, UsuarioId = UsuarioId(user) };
+    db.Contas.Add(conta);
+    await db.SaveChangesAsync();
+    return Results.Created($"/contas/{conta.Id}", conta);
+});
+
+rotas.MapPut("/contas/{id}", async (int id, Conta entrada, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var erro = ValidarConta(entrada);
+    if (erro is not null)
+        return Results.BadRequest(erro);
+
+    var usuarioId = UsuarioId(user);
+    var conta = await db.Contas.FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId);
+    if (conta is null)
+        return Results.NotFound();
+
+    conta.Nome = entrada.Nome.Trim();
+    conta.SaldoInicial = entrada.SaldoInicial;
+    await db.SaveChangesAsync();
+    return Results.Ok(conta);
+});
+
+rotas.MapDelete("/contas/{id}", async (int id, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var usuarioId = UsuarioId(user);
+    var conta = await db.Contas.FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId);
+    if (conta is null)
+        return Results.NotFound();
+
+    if (await db.Transacoes.AnyAsync(t => t.ContaId == id)
+        || await db.Cartoes.AnyAsync(c => c.ContaId == id)
+        || await db.Transferencias.AnyAsync(t => t.ContaOrigemId == id || t.ContaDestinoId == id))
+        return Results.Conflict("Não é possível excluir uma conta que possui transações, transferências ou cartões.");
+    if (await db.Contas.CountAsync(c => c.UsuarioId == usuarioId) == 1)
+        return Results.Conflict("Não é possível excluir a última conta.");
+
+    db.Contas.Remove(conta);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+});
+
+// Transferências entre contas (não são receita nem despesa), da mais nova para a mais antiga.
+rotas.MapGet("/transferencias", async (ClaimsPrincipal user, AppDbContext db) =>
+{
+    var usuarioId = UsuarioId(user);
+    var hoje = DateTime.Today;
+    var nomes = await db.Contas.Where(c => c.UsuarioId == usuarioId).ToDictionaryAsync(c => c.Id, c => c.Nome);
+    var lista = await db.Transferencias
+        .Where(t => t.UsuarioId == usuarioId)
+        .OrderByDescending(t => t.Data).ThenByDescending(t => t.Id)
+        .ToListAsync();
+    return lista.Select(t => new
+    {
+        t.Id,
+        t.Descricao,
+        t.Valor,
+        t.Data,
+        t.ContaOrigemId,
+        t.ContaDestinoId,
+        origem = nomes.GetValueOrDefault(t.ContaOrigemId),
+        destino = nomes.GetValueOrDefault(t.ContaDestinoId),
+        // Com data futura: ainda não mexeu no saldo das contas.
+        agendada = t.Data > hoje,
+    });
+});
+
+rotas.MapPost("/transferencias", async (Transferencia entrada, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var usuarioId = UsuarioId(user);
+    if (entrada.Valor <= 0)
+        return Results.BadRequest("O valor deve ser maior que zero.");
+    if (entrada.Valor > 99_999_999.99m)
+        return Results.BadRequest("O valor é grande demais.");
+    if (entrada.Data == default)
+        return Results.BadRequest("A data é obrigatória.");
+    if (entrada.ContaOrigemId == entrada.ContaDestinoId)
+        return Results.BadRequest("Escolha duas contas diferentes.");
+    if (!await ContaDoUsuario(db, usuarioId, entrada.ContaOrigemId) || !await ContaDoUsuario(db, usuarioId, entrada.ContaDestinoId))
+        return Results.BadRequest("Conta não encontrada.");
+
+    var transferencia = new Transferencia
+    {
+        Descricao = entrada.Descricao?.Trim() ?? "",
+        Valor = entrada.Valor,
+        Data = entrada.Data,
+        ContaOrigemId = entrada.ContaOrigemId,
+        ContaDestinoId = entrada.ContaDestinoId,
+        UsuarioId = usuarioId,
+    };
+    db.Transferencias.Add(transferencia);
+    await db.SaveChangesAsync();
+    return Results.Created($"/transferencias/{transferencia.Id}", transferencia);
+});
+
+rotas.MapDelete("/transferencias/{id}", async (int id, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var usuarioId = UsuarioId(user);
+    var transferencia = await db.Transferencias.FirstOrDefaultAsync(t => t.Id == id && t.UsuarioId == usuarioId);
+    if (transferencia is null)
+        return Results.NotFound();
+
+    db.Transferencias.Remove(transferencia);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+});
+
 // Transações
 rotas.MapGet("/transacoes", async (string? mes, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var consulta = FiltrarPorMes(DoUsuario(db.Transacoes.Include(t => t.Categoria).Include(t => t.Cartao), user), mes);
+    var consulta = FiltrarPorMes(DoUsuario(db.Transacoes.Include(t => t.Categoria).Include(t => t.Cartao).Include(t => t.Conta), user), mes);
     if (consulta is null)
         return Results.BadRequest(MesInvalido);
 
@@ -352,7 +504,7 @@ rotas.MapGet("/transacoes", async (string? mes, ClaimsPrincipal user, AppDbConte
 });
 
 rotas.MapGet("/transacoes/{id}", async (int id, ClaimsPrincipal user, AppDbContext db) =>
-    await DoUsuario(db.Transacoes.Include(t => t.Categoria).Include(t => t.Cartao), user).FirstOrDefaultAsync(t => t.Id == id) is Transacao transacao
+    await DoUsuario(db.Transacoes.Include(t => t.Categoria).Include(t => t.Cartao).Include(t => t.Conta), user).FirstOrDefaultAsync(t => t.Id == id) is Transacao transacao
         ? Results.Ok(transacao)
         : Results.NotFound());
 
@@ -387,10 +539,12 @@ rotas.MapPost("/transacoes", async (Transacao entrada, string? repetir, string? 
     // Repetindo ou parcelando, todas as cópias ganham a mesma marca de série.
     Guid? serieId = meses > 1 ? Guid.NewGuid() : null;
     var cartao = entrada.CartaoId is null ? null : await db.Cartoes.FindAsync(entrada.CartaoId);
+    // No cartão, a conta é a que paga a fatura; sem conta escolhida, a conta principal.
+    var contaId = (cartao is not null ? cartao.ContaId : entrada.ContaId) ?? await ContaPrincipal(db, usuarioId);
 
     var transacoes = Enumerable.Range(0, meses).Select(i =>
     {
-        var copia = new Transacao { UsuarioId = usuarioId, SerieId = serieId };
+        var copia = new Transacao { UsuarioId = usuarioId, SerieId = serieId, ContaId = contaId };
         CopiarCampos(entrada, copia);
         // Sempre a partir da data original: 31/01 vira 28/02 (ou 29/02) e depois 31/03.
         copia.Data = entrada.Data.AddMonths(i);
@@ -420,6 +574,7 @@ rotas.MapPost("/transacoes", async (Transacao entrada, string? repetir, string? 
     var transacao = transacoes[0];
     await db.Entry(transacao).Reference(t => t.Categoria).LoadAsync();
     await db.Entry(transacao).Reference(t => t.Cartao).LoadAsync();
+    await db.Entry(transacao).Reference(t => t.Conta).LoadAsync();
     return Results.Created($"/transacoes/{transacao.Id}", transacao);
 });
 
@@ -452,6 +607,12 @@ rotas.MapPut("/transacoes/{id}", async (int id, Transacao entrada, bool? seguint
     {
         transacao.DataCompra = entrada.Data;
         transacao.Data = VencimentoDaFatura(cartao, entrada.Data).AddMonths(faturasDepois);
+        transacao.ContaId = cartao.ContaId ?? await ContaPrincipal(db, usuarioId);
+    }
+    else
+    {
+        // Sem conta informada, continua na mesma.
+        transacao.ContaId = entrada.ContaId ?? transacao.ContaId ?? await ContaPrincipal(db, usuarioId);
     }
 
     if (seguintes == true && transacao.SerieId is not null)
@@ -467,6 +628,7 @@ rotas.MapPut("/transacoes/{id}", async (int id, Transacao entrada, bool? seguint
             proxima.Valor = transacao.Valor;
             proxima.Tipo = transacao.Tipo;
             proxima.CategoriaId = transacao.CategoriaId;
+            proxima.ContaId = transacao.ContaId;
         }
     }
 
@@ -474,6 +636,7 @@ rotas.MapPut("/transacoes/{id}", async (int id, Transacao entrada, bool? seguint
     await db.SaveChangesAsync();
     await db.Entry(transacao).Reference(t => t.Categoria).LoadAsync();
     await db.Entry(transacao).Reference(t => t.Cartao).LoadAsync();
+    await db.Entry(transacao).Reference(t => t.Conta).LoadAsync();
     return Results.Ok(transacao);
 });
 
@@ -492,7 +655,7 @@ rotas.MapDelete("/transacoes/{id}", async (int id, bool? seguintes, ClaimsPrinci
 });
 
 // Importação de extrato: grava a lista revisada de uma vez (todas ou nenhuma), já como pagas/recebidas.
-rotas.MapPost("/transacoes/importar", async (List<ItemImportacao> itens, ClaimsPrincipal user, AppDbContext db) =>
+rotas.MapPost("/transacoes/importar", async (List<ItemImportacao> itens, int? contaId, ClaimsPrincipal user, AppDbContext db) =>
 {
     if (itens.Count == 0)
         return Results.BadRequest("Nenhuma transação para importar.");
@@ -500,6 +663,10 @@ rotas.MapPost("/transacoes/importar", async (List<ItemImportacao> itens, ClaimsP
         return Results.BadRequest("Importe no máximo 2.000 transações por vez.");
 
     var usuarioId = UsuarioId(user);
+    if (contaId is not null && !await ContaDoUsuario(db, usuarioId, contaId.Value))
+        return Results.BadRequest("Conta não encontrada.");
+    contaId ??= await ContaPrincipal(db, usuarioId);
+
     var transacoes = new List<Transacao>();
     foreach (var item in itens)
     {
@@ -516,7 +683,7 @@ rotas.MapPost("/transacoes/importar", async (List<ItemImportacao> itens, ClaimsP
         if (erro is not null)
             return Results.BadRequest($"Linha {item.Linha}: {erro}");
 
-        var transacao = new Transacao { UsuarioId = usuarioId };
+        var transacao = new Transacao { UsuarioId = usuarioId, ContaId = contaId };
         CopiarCampos(entrada, transacao);
         transacoes.Add(transacao);
     }
@@ -530,7 +697,7 @@ rotas.MapPost("/transacoes/importar", async (List<ItemImportacao> itens, ClaimsP
 // Marca só a situação (paga / pendente), sem mexer no resto da transação.
 rotas.MapPut("/transacoes/{id}/pago", async (int id, Situacao entrada, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var transacao = await DoUsuario(db.Transacoes.Include(t => t.Categoria).Include(t => t.Cartao), user).FirstOrDefaultAsync(t => t.Id == id);
+    var transacao = await DoUsuario(db.Transacoes.Include(t => t.Categoria).Include(t => t.Cartao).Include(t => t.Conta), user).FirstOrDefaultAsync(t => t.Id == id);
     if (transacao is null)
         return Results.NotFound();
 
@@ -543,7 +710,7 @@ rotas.MapPut("/transacoes/{id}/pago", async (int id, Situacao entrada, ClaimsPri
 // Sem mês: todas as pendentes.
 rotas.MapGet("/pendentes", async (string? mes, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var consulta = DoUsuario(db.Transacoes.Include(t => t.Categoria).Include(t => t.Cartao), user).Where(t => !t.Pago);
+    var consulta = DoUsuario(db.Transacoes.Include(t => t.Categoria).Include(t => t.Cartao).Include(t => t.Conta), user).Where(t => !t.Pago);
     if (mes is not null)
     {
         if (!DateTime.TryParseExact(mes, "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var inicio))
@@ -592,7 +759,9 @@ rotas.MapGet("/saldo", async (string? mes, ClaimsPrincipal user, AppDbContext db
 
     // Saldo real: o dinheiro que se tem agora = tudo o que já foi recebido − tudo o que já foi pago
     // (de todas as datas; não depende do mês escolhido).
-    var saldoReal = await DoUsuario(db.Transacoes, user)
+    // Começa com o saldo inicial das contas.
+    var saldosIniciais = await SaldosIniciais(db, user);
+    var saldoReal = saldosIniciais + await DoUsuario(db.Transacoes, user)
         .Where(t => t.Pago)
         .SumAsync(t => t.Tipo == TipoTransacao.Receita ? t.Valor : -t.Valor);
 
@@ -601,7 +770,7 @@ rotas.MapGet("/saldo", async (string? mes, ClaimsPrincipal user, AppDbContext db
 
     // Com mês: também o acumulado, ou seja, o saldo de tudo até o fim desse mês (previsão).
     var fimDoMes = DateTime.ParseExact(mes, "yyyy-MM", null).AddMonths(1);
-    var acumulado = await SaldoAntesDe(DoUsuario(db.Transacoes, user), fimDoMes);
+    var acumulado = saldosIniciais + await SaldoAntesDe(DoUsuario(db.Transacoes, user), fimDoMes);
     return Results.Ok(new { receitas, despesas, saldo = receitas - despesas, acumulado, saldoReal });
 });
 
@@ -666,7 +835,7 @@ rotas.MapGet("/resumo-mensal", async (string? ano, ClaimsPrincipal user, AppDbCo
         .ToListAsync();
 
     // O acumulado começa com o que sobrou (ou faltou) dos anos anteriores.
-    var acumulado = await SaldoAntesDe(DoUsuario(db.Transacoes, user), inicio);
+    var acumulado = await SaldosIniciais(db, user) + await SaldoAntesDe(DoUsuario(db.Transacoes, user), inicio);
 
     // Monta os 12 meses, preenchendo com zero os que não têm transações.
     var meses = Enumerable.Range(1, 12).Select(m =>
@@ -794,6 +963,8 @@ static async Task<string?> ValidarTransacao(Transacao entrada, int usuarioId, Ap
         return "O tipo deve ser Receita ou Despesa.";
     if (!await db.Categorias.AnyAsync(c => c.Id == entrada.CategoriaId && c.UsuarioId == usuarioId))
         return "Categoria não encontrada.";
+    if (entrada.ContaId is not null && !await ContaDoUsuario(db, usuarioId, entrada.ContaId.Value))
+        return "Conta não encontrada.";
     if (entrada.CartaoId is not null)
     {
         if (entrada.Tipo != TipoTransacao.Despesa)
@@ -826,6 +997,28 @@ static void CopiarCampos(Transacao origem, Transacao destino)
     destino.CategoriaId = origem.CategoriaId;
     destino.Pago = origem.Pago;
     destino.CartaoId = origem.CartaoId;
+}
+
+static Task<bool> ContaDoUsuario(AppDbContext db, int usuarioId, int contaId) =>
+    db.Contas.AnyAsync(c => c.Id == contaId && c.UsuarioId == usuarioId);
+
+// A conta principal = a mais antiga do usuário (a criada no cadastro, se ainda existir).
+static Task<int?> ContaPrincipal(AppDbContext db, int usuarioId) =>
+    db.Contas.Where(c => c.UsuarioId == usuarioId).OrderBy(c => c.Id).Select(c => (int?)c.Id).FirstOrDefaultAsync();
+
+static async Task<decimal> SaldosIniciais(AppDbContext db, ClaimsPrincipal user)
+{
+    var usuarioId = UsuarioId(user);
+    return await db.Contas.Where(c => c.UsuarioId == usuarioId).SumAsync(c => c.SaldoInicial);
+}
+
+static string? ValidarConta(Conta entrada)
+{
+    if (string.IsNullOrWhiteSpace(entrada.Nome))
+        return "O nome da conta é obrigatório.";
+    if (Math.Abs(entrada.SaldoInicial) > 99_999_999.99m)
+        return "O saldo inicial é grande demais.";
+    return null;
 }
 
 static string? ValidarCartao(Cartao entrada)
