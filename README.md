@@ -16,11 +16,12 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 - **Saldo real**: o dinheiro que se tem agora, contando só o que já foi pago e recebido (o saldo e o acumulado são previsões, que contam também o que está pendente)
 - **Saldo acumulado**: quanto se tem no fim de cada mês, somando o que sobrou (ou faltou) dos meses anteriores (no resumo do topo e no resumo mês a mês)
 - **Busca e filtros na lista de transações**: por descrição (sem diferenciar maiúsculas e acentos), categoria e tipo, com a soma do que está filtrado
+- **Importar extrato do banco (CSV)**: o arquivo é lido no navegador (separador `;`, `,` ou tab; números como `1.234,56` ou `-50.00`; datas `05/11/2026` ou `2026-11-05`; UTF-8 ou Windows-1252; coluna de valor ou colunas de crédito e débito; opção para fatura de cartão). Depois é só conferir as colunas, escolher as categorias e importar. Transações que já existem vêm desmarcadas, para não duplicar
 - **Exportar para CSV**: baixa as transações que estão na tabela (respeitando o mês e os filtros), num formato que o Excel em português abre direto
 - **Gráfico de despesas por categoria**: barras da maior para a menor despesa, com valor e porcentagem
 - **Resumo mês a mês**: receitas e despesas de cada mês do ano lado a lado, em gráfico e em tabela com o saldo de cada mês, e um gráfico de linha com a evolução do saldo acumulado (linha tracejada nos meses que ainda não chegaram)
 
-A tela é dividida em três abas: **Visão geral** (números do mês, metas, gráficos e resumo mês a mês), **Transações** e **Categorias**. O layout se adapta ao celular e tem **modo escuro**: por padrão segue o tema do sistema, e o botão 🌙/☀️ no topo troca na hora (a escolha fica guardada no navegador).
+A tela é dividida em quatro abas: **Visão geral** (números do mês, contas, metas, gráficos e resumo mês a mês), **Transações**, **Categorias** e **Importar**. O layout se adapta ao celular e tem **modo escuro**: por padrão segue o tema do sistema, e o botão 🌙/☀️ no topo troca na hora (a escolha fica guardada no navegador).
 
 ## Tecnologias
 
@@ -124,6 +125,7 @@ As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os da
 | GET | `/transacoes/{id}` | Busca uma transação |
 | POST | `/transacoes` | Cria uma transação. Com `?repetir=12`, cria a mesma transação em 12 meses seguidos, de 1 a 60 (o dia 31 cai no último dia dos meses mais curtos). Com `?parcelas=10`, divide o `valor` total em 10 parcelas mensais numeradas (de 2 a 60) |
 | PUT | `/transacoes/{id}` | Edita uma transação. Com `?seguintes=true`, aplica descrição, valor, tipo e categoria também às transações seguintes da mesma série |
+| POST | `/transacoes/importar` | Importa uma lista de transações de uma vez, já como pagas (todas ou nenhuma; até 2.000). Cada item: `{ "linha", "descricao", "valor", "data", "tipo", "categoriaId" }`; um erro responde 400 com o número da linha |
 | PUT | `/transacoes/{id}/pago` | Marca só a situação: `{ "pago": true }` (paga/recebida) ou `false` (pendente) |
 | GET | `/pendentes?mes=AAAA-MM` | Transações pendentes até o fim do mês (inclusive as atrasadas de antes), com os totais a pagar e a receber |
 | DELETE | `/transacoes/{id}` | Exclui uma transação. Com `?seguintes=true`, exclui também as seguintes da mesma série |
@@ -162,6 +164,8 @@ proj-controle-financeiro/
         ├── api.js           Função que chama a API e trata os erros
         ├── formatar.js      Formatação de valores (R$) e datas
         ├── csv.js           Geração e download do arquivo CSV
+        ├── lerExtrato.js    Leitura de extratos CSV (separador, números, datas, colunas)
+        ├── Importar.jsx     Tela de importação de extrato
         ├── App.jsx          Cabeçalho, abas (Visão geral, Transações, Categorias), filtro por mês e cartões de saldo
         ├── Login.jsx        Tela de entrar e criar conta
         ├── TrocarSenha.jsx  Formulário de troca de senha

@@ -5,13 +5,14 @@ import { formatarMes, formatarReais, mesAtual } from './formatar.js'
 import Categorias from './Categorias.jsx'
 import ContasDoMes from './ContasDoMes.jsx'
 import DespesasPorCategoria from './DespesasPorCategoria.jsx'
+import Importar from './Importar.jsx'
 import Login from './Login.jsx'
 import MetasDoMes from './MetasDoMes.jsx'
 import ResumoMensal from './ResumoMensal.jsx'
 import Transacoes from './Transacoes.jsx'
 import TrocarSenha from './TrocarSenha.jsx'
 
-const ABAS = ['Visão geral', 'Transações', 'Categorias']
+const ABAS = ['Visão geral', 'Transações', 'Categorias', 'Importar']
 
 // O navegador lembra a última aba aberta (se não der para ler, abre a primeira).
 function abaSalva() {
@@ -138,7 +139,7 @@ function App() {
           ))}
         </nav>
 
-        {aba !== 'Categorias' && (
+        {(aba === 'Visão geral' || aba === 'Transações') && (
           <div className="filtro-mes">
             <label htmlFor="mes">Mês</label>
             <input id="mes" type="month" value={mes} onChange={(e) => setMes(e.target.value)} />
@@ -200,6 +201,8 @@ function App() {
         )}
 
         {aba === 'Categorias' && <Categorias aoAlterar={aoAlterar} />}
+
+        {aba === 'Importar' && <Importar aoAlterar={aoAlterar} />}
       </main>
     </>
   )

@@ -347,6 +347,42 @@ rotas.MapDelete("/transacoes/{id}", async (int id, bool? seguintes, ClaimsPrinci
     return Results.NoContent();
 });
 
+// Importação de extrato: grava a lista revisada de uma vez (todas ou nenhuma), já como pagas/recebidas.
+rotas.MapPost("/transacoes/importar", async (List<ItemImportacao> itens, ClaimsPrincipal user, AppDbContext db) =>
+{
+    if (itens.Count == 0)
+        return Results.BadRequest("Nenhuma transação para importar.");
+    if (itens.Count > 2000)
+        return Results.BadRequest("Importe no máximo 2.000 transações por vez.");
+
+    var usuarioId = UsuarioId(user);
+    var transacoes = new List<Transacao>();
+    foreach (var item in itens)
+    {
+        var entrada = new Transacao
+        {
+            Descricao = item.Descricao ?? "",
+            Valor = item.Valor,
+            Data = item.Data,
+            Tipo = item.Tipo,
+            CategoriaId = item.CategoriaId,
+            Pago = true, // veio do extrato: já aconteceu
+        };
+        var erro = await ValidarTransacao(entrada, usuarioId, db);
+        if (erro is not null)
+            return Results.BadRequest($"Linha {item.Linha}: {erro}");
+
+        var transacao = new Transacao { UsuarioId = usuarioId };
+        CopiarCampos(entrada, transacao);
+        transacoes.Add(transacao);
+    }
+
+    // Um único SaveChanges: grava todas ou nenhuma.
+    db.Transacoes.AddRange(transacoes);
+    await db.SaveChangesAsync();
+    return Results.Ok(new { importadas = transacoes.Count });
+});
+
 // Marca só a situação (paga / pendente), sem mexer no resto da transação.
 rotas.MapPut("/transacoes/{id}/pago", async (int id, Situacao entrada, ClaimsPrincipal user, AppDbContext db) =>
 {
@@ -549,6 +585,8 @@ static async Task<string?> ValidarTransacao(Transacao entrada, int usuarioId, Ap
         return "A descrição é obrigatória.";
     if (entrada.Valor <= 0)
         return "O valor deve ser maior que zero.";
+    if (entrada.Valor > 99_999_999.99m) // o maior valor que a coluna decimal(10,2) guarda
+        return "O valor é grande demais.";
     if (entrada.Data == default)
         return "A data é obrigatória.";
     if (!Enum.IsDefined(entrada.Tipo))
@@ -584,3 +622,5 @@ static void CopiarCampos(Transacao origem, Transacao destino)
 record Credenciais(string? Email, string? Senha);
 record TrocaDeSenha(string? SenhaAtual, string? NovaSenha);
 record Situacao(bool Pago);
+// Uma linha do extrato importado ("Linha" = número da linha no arquivo, para as mensagens de erro).
+record ItemImportacao(int Linha, string? Descricao, decimal Valor, DateTime Data, TipoTransacao Tipo, int CategoriaId);

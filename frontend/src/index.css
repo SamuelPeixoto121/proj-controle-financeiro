@@ -656,6 +656,33 @@ tfoot th {
   font-size: 0.9rem;
 }
 
+/* Importar extrato */
+.arquivo {
+  flex-wrap: wrap;
+}
+
+.arquivo input[type='file'] {
+  flex: 1 1 260px;
+}
+
+.tabela-importar select {
+  padding: 4px 8px;
+  max-width: 180px;
+}
+
+.tabela-importar tr.desmarcada td {
+  opacity: 0.55;
+}
+
+.tabela-importar small {
+  display: block;
+}
+
+.categoria-padrao {
+  max-width: 300px;
+  margin-bottom: 8px;
+}
+
 /* =========================================================
    7. Categorias
    ========================================================= */
@@ -1057,6 +1084,59 @@ tfoot th {
 
   .filtros select {
     flex: 1 1 140px;
+  }
+
+  /* 4 abas não cabem numa linha: quebram em duas */
+  .abas {
+    flex-wrap: wrap;
+  }
+
+  .aba {
+    padding: 8px 12px;
+  }
+
+  /* Revisão da importação: cada linha vira um bloco
+     [☑] descrição ............ valor
+         data          [categoria] */
+  .tabela-importar thead {
+    display: none;
+  }
+
+  .tabela-importar tr {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'marca desc valor'
+      'marca data categoria';
+    gap: 4px 10px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--borda);
+  }
+
+  .tabela-importar td {
+    border: none;
+    padding: 0;
+  }
+
+  .tabela-importar td:nth-child(1) {
+    grid-area: marca;
+  }
+  .tabela-importar td:nth-child(2) {
+    grid-area: data;
+    color: var(--texto-suave);
+    font-size: 0.85rem;
+  }
+  .tabela-importar td:nth-child(3) {
+    grid-area: desc;
+    font-weight: 600;
+  }
+  .tabela-importar td:nth-child(4) {
+    grid-area: valor;
+  }
+  .tabela-importar td:nth-child(5) {
+    grid-area: categoria;
+    justify-self: end;
   }
 
   /* Contas do mês: descrição e valor em cima; data e botão embaixo */
