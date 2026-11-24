@@ -22,6 +22,7 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 - **Exportar para CSV**: baixa as transações que estão na tabela (respeitando o mês e os filtros), num formato que o Excel em português abre direto
 - **Gráfico de despesas por categoria**: barras da maior para a menor despesa, com valor e porcentagem
 - **Resumo mês a mês**: receitas e despesas de cada mês do ano lado a lado, em gráfico e em tabela com o saldo de cada mês, e um gráfico de linha com a evolução do saldo acumulado (linha tracejada nos meses que ainda não chegaram)
+- **Comparação com o ano anterior**: receitas, despesas e saldo do ano com a variação em relação ao ano anterior, e as despesas por categoria dos dois anos (as que mais mudaram primeiro). No ano atual, compara o mesmo período (jan até o mês atual) nos dois anos
 
 A tela é dividida em quatro abas: **Visão geral** (números do mês, contas, metas, gráficos e resumo mês a mês), **Transações**, **Categorias** e **Importar**. O layout se adapta ao celular e tem **modo escuro**: por padrão segue o tema do sistema, e o botão 🌙/☀️ no topo troca na hora (a escolha fica guardada no navegador).
 
@@ -190,6 +191,7 @@ As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os da
 | GET | `/despesas-por-categoria` | Total de despesas de cada categoria, do maior para o menor |
 | GET | `/metas?mes=AAAA-MM` | Para cada categoria com meta: a meta e o gasto do mês (o mês é obrigatório) |
 | GET | `/resumo-mensal?ano=AAAA` | Receitas, despesas, saldo e acumulado de cada um dos 12 meses do ano (sem `ano`, usa o ano atual) |
+| GET | `/resumo-anual?ano=AAAA` | Totais do ano e do ano anterior (no ano atual, só até o mês atual nos dois) e as despesas por categoria dos dois anos |
 
 `GET /transacoes`, `GET /saldo` e `GET /despesas-por-categoria` aceitam o filtro opcional `?mes=AAAA-MM` (por exemplo, `/saldo?mes=2026-11`) para considerar só um mês. Sem o filtro, consideram todas as transações.
 
@@ -231,6 +233,7 @@ proj-controle-financeiro/
         ├── TrocarSenha.jsx  Formulário de troca de senha
         ├── BotaoTema.jsx    Botão de tema claro/escuro
         ├── ResumoMensal.jsx Resumo mês a mês (gráfico e tabela)
+        ├── ComparacaoAnual.jsx Comparação do ano com o anterior
         ├── GraficoAcumulado.jsx  Gráfico de linha da evolução do saldo acumulado
         ├── escalaAcumulado.js    Cálculo das posições dos pontos desse gráfico
         ├── MetasDoMes.jsx   Progresso das metas de gasto do mês

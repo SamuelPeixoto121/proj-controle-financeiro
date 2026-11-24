@@ -126,5 +126,68 @@ public class RelatoriosTestes(ApiDeTeste api)
         Assert.Empty((await bruno.Get("/pendentes")).Dados!["transacoes"]!.AsArray());
         Assert.Empty((await bruno.Get("/metas?mes=2030-08")).Dados!.AsArray());
         Assert.Empty((await bruno.Get("/despesas-por-categoria")).Dados!.AsArray());
+        Assert.Empty((await bruno.Get("/resumo-anual?ano=2030")).Dados!["categorias"]!.AsArray());
+        Assert.Equal(0m, (await bruno.Get("/resumo-anual?ano=2030")).Dados!["atual"]!["despesas"]!.GetValue<decimal>());
+    }
+
+    [Fact]
+    public async Task Resumo_anual_de_ano_fechado_compara_os_12_meses_e_as_categorias()
+    {
+        var usuario = await Cliente.NovoUsuario(api);
+        var mercado = await usuario.CriarCategoria("Mercado");
+        var transporte = await usuario.CriarCategoria("Transporte");
+        var lazer = await usuario.CriarCategoria("Lazer");
+        await usuario.CriarTransacao(mercado, "Salário 2030", 5000, "2030-01-05", "Receita");
+        await usuario.CriarTransacao(mercado, "Mercado 2030", 1000, "2030-12-31");
+        await usuario.CriarTransacao(transporte, "Ônibus 2030", 400, "2030-06-10");
+        await usuario.CriarTransacao(mercado, "Salário 2031", 6000.50m, "2031-01-05", "Receita");
+        await usuario.CriarTransacao(mercado, "Mercado 2031", 1200, "2031-12-31"); // dezembro conta (ano fechado)
+        await usuario.CriarTransacao(lazer, "Cinema 2031", 50.25m, "2031-03-01");
+        await usuario.CriarTransacao(mercado, "Fora (2029)", 999, "2029-12-31");
+        await usuario.CriarTransacao(mercado, "Fora (2032)", 999, "2032-01-01");
+
+        var r = (await usuario.Get("/resumo-anual?ano=2031")).Dados!;
+        Assert.Equal(2031, r["ano"]!.GetValue<int>());
+        Assert.Equal(12, r["ateMes"]!.GetValue<int>());
+        decimal Valor(string ano, string campo) => r[ano]![campo]!.GetValue<decimal>();
+        Assert.Equal(6000.50m, Valor("atual", "receitas"));
+        Assert.Equal(1250.25m, Valor("atual", "despesas"));
+        Assert.Equal(4750.25m, Valor("atual", "saldo"));
+        Assert.Equal(5000m, Valor("anterior", "receitas"));
+        Assert.Equal(1400m, Valor("anterior", "despesas"));
+        Assert.Equal(3600m, Valor("anterior", "saldo"));
+
+        // Só despesas; as que mais mudaram em reais primeiro: Transporte (−400), Mercado (+200), Lazer (+50,25)
+        var categorias = r["categorias"]!.AsArray();
+        Assert.Equal(["Transporte", "Mercado", "Lazer"], categorias.Select(c => c!["categoria"]!.GetValue<string>()));
+        Assert.Equal([0m, 1200m, 50.25m], categorias.Select(c => c!["atual"]!.GetValue<decimal>()));
+        Assert.Equal([400m, 1000m, 0m], categorias.Select(c => c!["anterior"]!.GetValue<decimal>()));
+
+        Assert.Equal(400, (await usuario.Get("/resumo-anual?ano=abc")).Status);
+        Assert.Equal(400, (await usuario.Get("/resumo-anual?ano=1800")).Status);
+    }
+
+    [Fact]
+    public async Task Resumo_anual_do_ano_atual_compara_so_ate_o_mes_atual()
+    {
+        var hoje = DateTime.Today;
+        var usuario = await Cliente.NovoUsuario(api);
+        var cat = await usuario.CriarCategoria();
+        // Último dia do mês atual, um ano atrás: entra na comparação.
+        var fimDoMesAnoPassado = new DateTime(hoje.Year - 1, hoje.Month, 1).AddMonths(1).AddDays(-1);
+        await usuario.CriarTransacao(cat, "Entra", 100, fimDoMesAnoPassado.ToString("yyyy-MM-dd"));
+        await usuario.CriarTransacao(cat, "Este ano", 30, $"{hoje.Year}-01-01");
+        // O mês seguinte (do ano passado e deste ano) fica de fora, porque este ano ainda não chegou lá.
+        if (hoje.Month < 12)
+        {
+            await usuario.CriarTransacao(cat, "Fora ano passado", 500, $"{hoje.Year - 1}-{hoje.Month + 1:00}-01");
+            await usuario.CriarTransacao(cat, "Fora futuro", 700, $"{hoje.Year}-{hoje.Month + 1:00}-01");
+        }
+
+        var r = (await usuario.Get("/resumo-anual")).Dados!; // sem ?ano= usa o ano atual
+        Assert.Equal(hoje.Year, r["ano"]!.GetValue<int>());
+        Assert.Equal(hoje.Month, r["ateMes"]!.GetValue<int>());
+        Assert.Equal(100m, r["anterior"]!["despesas"]!.GetValue<decimal>());
+        Assert.Equal(30m, r["atual"]!["despesas"]!.GetValue<decimal>());
     }
 }

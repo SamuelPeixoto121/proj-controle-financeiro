@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatarData, formatarMes, formatarReais, hoje, normalizar, previaDeParcelas, situacaoDe } from './formatar.js'
+import { formatarData, formatarMes, formatarReais, hoje, normalizar, previaDeParcelas, situacaoDe, variacao } from './formatar.js'
 
 // O Intl usa espaço não separável depois do "R$"; aqui ele vira espaço normal para comparar.
 const semNbsp = (texto) => texto.replace(/ /g, ' ')
@@ -66,5 +66,24 @@ describe('situacaoDe', () => {
     [{ pago: false, tipo: 'Despesa', data: '2020-01-01T00:00:00' }, 'Atrasada'],
   ])('%o é %j', (transacao, esperado) => {
     expect(situacaoDe(transacao)).toBe(esperado)
+  })
+})
+
+describe('variacao (comparação com o ano anterior)', () => {
+  it('calcula a % e arredonda', () => {
+    expect(variacao(1200, 1000)).toBe(20)
+    expect(variacao(800, 1000)).toBe(-20)
+    expect(variacao(1000, 1000)).toBe(0)
+    expect(variacao(100, 300)).toBe(-67) // −66,67%
+    expect(variacao(0, 500)).toBe(-100)
+  })
+
+  it('sem valor no ano anterior não há % (evita dividir por zero)', () => {
+    expect(variacao(500, 0)).toBeNull()
+    expect(variacao(0, 0)).toBeNull()
+  })
+
+  it('base negativa: melhorar de −100 para −50 é subir', () => {
+    expect(variacao(-50, -100)).toBe(50)
   })
 })

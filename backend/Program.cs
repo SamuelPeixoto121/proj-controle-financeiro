@@ -540,6 +540,60 @@ rotas.MapGet("/resumo-mensal", async (string? ano, ClaimsPrincipal user, AppDbCo
     return Results.Ok(meses);
 });
 
+// Comparação do ano com o anterior: totais e despesas por categoria dos dois anos.
+// No ano atual, compara só até o mês atual (jan–nov de 2026 com jan–nov de 2025),
+// para a comparação ser justa; nos outros anos, os 12 meses.
+rotas.MapGet("/resumo-anual", async (string? ano, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var anoEscolhido = DateTime.Today.Year;
+    if (ano is not null && (!int.TryParse(ano, out anoEscolhido) || anoEscolhido < 1900 || anoEscolhido > 2100))
+        return Results.BadRequest("Ano inválido. Use quatro dígitos, por exemplo 2026.");
+
+    var ateMes = anoEscolhido == DateTime.Today.Year ? DateTime.Today.Month : 12;
+    var inicio = new DateTime(anoEscolhido, 1, 1);
+    var fim = inicio.AddMonths(ateMes);
+    var inicioAnterior = inicio.AddYears(-1);
+    var fimAnterior = fim.AddYears(-1);
+
+    // O banco devolve um total por (ano, tipo, categoria).
+    var totais = await DoUsuario(db.Transacoes, user)
+        .Where(t => (t.Data >= inicio && t.Data < fim) || (t.Data >= inicioAnterior && t.Data < fimAnterior))
+        .GroupBy(t => new { t.Data.Year, t.Tipo, t.CategoriaId, t.Categoria!.Nome })
+        .Select(g => new { Ano = g.Key.Year, g.Key.Tipo, g.Key.CategoriaId, g.Key.Nome, Total = g.Sum(t => t.Valor) })
+        .ToListAsync();
+
+    object TotaisDo(int a)
+    {
+        var receitas = totais.Where(x => x.Ano == a && x.Tipo == TipoTransacao.Receita).Sum(x => x.Total);
+        var despesas = totais.Where(x => x.Ano == a && x.Tipo == TipoTransacao.Despesa).Sum(x => x.Total);
+        return new { receitas, despesas, saldo = receitas - despesas };
+    }
+
+    // As categorias que mais mudaram (em reais) primeiro.
+    var categorias = totais
+        .Where(x => x.Tipo == TipoTransacao.Despesa)
+        .GroupBy(x => new { x.CategoriaId, x.Nome })
+        .Select(g => new
+        {
+            categoriaId = g.Key.CategoriaId,
+            categoria = g.Key.Nome,
+            atual = g.Where(x => x.Ano == anoEscolhido).Sum(x => x.Total),
+            anterior = g.Where(x => x.Ano == anoEscolhido - 1).Sum(x => x.Total),
+        })
+        .OrderByDescending(c => Math.Abs(c.atual - c.anterior))
+        .ThenByDescending(c => c.atual)
+        .ToList();
+
+    return Results.Ok(new
+    {
+        ano = anoEscolhido,
+        ateMes,
+        atual = TotaisDo(anoEscolhido),
+        anterior = TotaisDo(anoEscolhido - 1),
+        categorias,
+    });
+});
+
 app.Run();
 
 // Id do usuário logado, guardado no cookie no momento do login.

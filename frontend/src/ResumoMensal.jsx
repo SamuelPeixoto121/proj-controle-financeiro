@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { NOMES_MESES, formatarReais, mesAtual } from './formatar.js'
+import ComparacaoAnual from './ComparacaoAnual.jsx'
 import GraficoAcumulado from './GraficoAcumulado.jsx'
 
 // Vermelho se negativo, verde se positivo, cor normal se zero.
@@ -39,6 +40,8 @@ function ResumoMensal({ mes, atualizacao }) {
           ▶
         </button>
       </div>
+
+      <ComparacaoAnual ano={ano} atualizacao={atualizacao} />
 
       {erro && <p className="erro">{erro}</p>}
       {!erro && meses.length > 0 && maior === 0 && <p>Nenhuma transação em {ano}.</p>}

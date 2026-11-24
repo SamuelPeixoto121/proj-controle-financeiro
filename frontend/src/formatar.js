@@ -44,3 +44,10 @@ export function situacaoDe(transacao) {
   if (transacao.data.slice(0, 10) < hoje()) return 'Atrasada'
   return transacao.tipo === 'Receita' ? 'A receber' : 'A pagar'
 }
+
+// Variação em % de um ano para o outro, arredondada: (1200, 1000) -> 20, (800, 1000) -> -20.
+// Sem base para comparar (anterior zero), devolve null.
+export function variacao(atual, anterior) {
+  if (!anterior) return null
+  return Math.round(((atual - anterior) / Math.abs(anterior)) * 100)
+}

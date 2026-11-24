@@ -856,6 +856,50 @@ tfoot th {
   text-align: center;
 }
 
+/* Comparação com o ano anterior: três números lado a lado + tabela por categoria */
+.comparacao {
+  margin: 8px 0 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--borda);
+}
+
+.comparacao h3 {
+  font-size: 1rem;
+  margin: 0 0 4px;
+}
+
+.comparacao p {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+}
+
+.comparacao-numeros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 8px 0 12px;
+}
+
+.comparacao-numeros > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+}
+
+.comparacao-numeros strong {
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabela-comparacao caption {
+  text-align: left;
+  font-weight: 600;
+  padding-top: 4px;
+}
+
 .legenda {
   display: flex;
   gap: 16px;
@@ -1166,6 +1210,17 @@ tfoot th {
   .tabela-resumo th:nth-child(3),
   .tabela-resumo td:nth-child(3) {
     display: none;
+  }
+
+  /* Comparação anual: no celular, só Categoria | ano atual | Variação;
+     e o 3º número (saldo) ocupa a linha inteira */
+  .tabela-comparacao th:nth-child(3),
+  .tabela-comparacao td:nth-child(3) {
+    display: none;
+  }
+
+  .comparacao-numeros > div:last-child {
+    grid-column: 1 / -1;
   }
 
   /* Transações: no celular, cada linha vira um bloco
