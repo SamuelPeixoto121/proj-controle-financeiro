@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import BotaoTema from './BotaoTema.jsx'
 import { formatarMes, formatarReais, mesAtual } from './formatar.js'
+import Cartoes from './Cartoes.jsx'
 import Categorias from './Categorias.jsx'
 import ContasDoMes from './ContasDoMes.jsx'
 import DespesasPorCategoria from './DespesasPorCategoria.jsx'
@@ -12,7 +13,7 @@ import ResumoMensal from './ResumoMensal.jsx'
 import Transacoes from './Transacoes.jsx'
 import TrocarSenha from './TrocarSenha.jsx'
 
-const ABAS = ['Visão geral', 'Transações', 'Categorias', 'Importar']
+const ABAS = ['Visão geral', 'Transações', 'Cartões', 'Categorias', 'Importar']
 
 // O navegador lembra a última aba aberta (se não der para ler, abre a primeira).
 function abaSalva() {
@@ -199,6 +200,8 @@ function App() {
         {aba === 'Transações' && (
           <Transacoes mes={mes} atualizacao={atualizacao} aoAlterar={aoAlterar} />
         )}
+
+        {aba === 'Cartões' && <Cartoes atualizacao={atualizacao} aoAlterar={aoAlterar} />}
 
         {aba === 'Categorias' && <Categorias aoAlterar={aoAlterar} />}
 

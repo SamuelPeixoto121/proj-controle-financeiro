@@ -23,8 +23,9 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 - **Gráfico de despesas por categoria**: barras da maior para a menor despesa, com valor e porcentagem
 - **Resumo mês a mês**: receitas e despesas de cada mês do ano lado a lado, em gráfico e em tabela com o saldo de cada mês, e um gráfico de linha com a evolução do saldo acumulado (linha tracejada nos meses que ainda não chegaram)
 - **Comparação com o ano anterior**: receitas, despesas e saldo do ano com a variação em relação ao ano anterior, e as despesas por categoria dos dois anos (as que mais mudaram primeiro). No ano atual, compara o mesmo período (jan até o mês atual) nos dois anos
+- **Cartão de crédito**: cadastre o cartão com o dia do fechamento e do vencimento e escolha-o em "Pagamento" ao lançar uma despesa. A compra conta no mês em que a fatura vence (compra no dia do fechamento ou depois entra na fatura seguinte); parcelado no cartão põe uma parcela em cada fatura. A aba Cartões mostra cada fatura (total, compras e situação: Aberta, Fechada, Paga ou Atrasada) com o botão "Pagar fatura", e nas contas do mês a fatura aparece numa linha só
 
-A tela é dividida em quatro abas: **Visão geral** (números do mês, contas, metas, gráficos e resumo mês a mês), **Transações**, **Categorias** e **Importar**. O layout se adapta ao celular e tem **modo escuro**: por padrão segue o tema do sistema, e o botão 🌙/☀️ no topo troca na hora (a escolha fica guardada no navegador).
+A tela é dividida em cinco abas: **Visão geral** (números do mês, contas, metas, gráficos e resumo mês a mês), **Transações**, **Cartões**, **Categorias** e **Importar**. O layout se adapta ao celular e tem **modo escuro**: por padrão segue o tema do sistema, e o botão 🌙/☀️ no topo troca na hora (a escolha fica guardada no navegador).
 
 ## Tecnologias
 
@@ -179,9 +180,15 @@ As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os da
 | POST | `/categorias` | Cria uma categoria (`{ "nome": "Mercado", "metaMensal": 800 }`; a meta é opcional) |
 | PUT | `/categorias/{id}` | Edita o nome e a meta de uma categoria (`metaMensal: null` remove a meta) |
 | DELETE | `/categorias/{id}` | Exclui uma categoria (409 se tiver transações) |
+| GET | `/cartoes` | Lista os cartões de crédito |
+| POST | `/cartoes` | Cria um cartão (`nome`, `diaFechamento` e `diaVencimento`, de 1 a 28) |
+| PUT | `/cartoes/{id}` | Edita um cartão (os novos dias valem para as próximas compras) |
+| DELETE | `/cartoes/{id}` | Exclui um cartão (409 se tiver compras) |
+| GET | `/cartoes/{id}/faturas` | Faturas do cartão: vencimento, fechamento, total, situação e compras |
+| PUT | `/cartoes/{id}/faturas/{AAAA-MM-DD}/pago` | Marca todas as compras da fatura como pagas (`{ "pago": true }`) ou pendentes |
 | GET | `/transacoes` | Lista as transações, da mais recente para a mais antiga |
 | GET | `/transacoes/{id}` | Busca uma transação |
-| POST | `/transacoes` | Cria uma transação. Com `?repetir=12`, cria a mesma transação em 12 meses seguidos, de 1 a 60 (o dia 31 cai no último dia dos meses mais curtos). Com `?parcelas=10`, divide o `valor` total em 10 parcelas mensais numeradas (de 2 a 60) |
+| POST | `/transacoes` | Cria uma transação. Com `?repetir=12`, cria a mesma transação em 12 meses seguidos, de 1 a 60 (o dia 31 cai no último dia dos meses mais curtos). Com `?parcelas=10`, divide o `valor` total em 10 parcelas mensais numeradas (de 2 a 60). Com `cartaoId`, a `data` enviada é a da compra: a API guarda em `dataCompra` e põe em `data` o vencimento da fatura |
 | PUT | `/transacoes/{id}` | Edita uma transação. Com `?seguintes=true`, aplica descrição, valor, tipo e categoria também às transações seguintes da mesma série |
 | POST | `/transacoes/importar` | Importa uma lista de transações de uma vez, já como pagas (todas ou nenhuma; até 2.000). Cada item: `{ "linha", "descricao", "valor", "data", "tipo", "categoriaId" }`; um erro responde 400 com o número da linha |
 | PUT | `/transacoes/{id}/pago` | Marca só a situação: `{ "pago": true }` (paga/recebida) ou `false` (pendente) |
@@ -228,7 +235,8 @@ proj-controle-financeiro/
         ├── csv.js           Geração e download do arquivo CSV
         ├── lerExtrato.js    Leitura de extratos CSV (separador, números, datas, colunas)
         ├── Importar.jsx     Tela de importação de extrato
-        ├── App.jsx          Cabeçalho, abas (Visão geral, Transações, Categorias), filtro por mês e cartões de saldo
+        ├── App.jsx          Cabeçalho, abas, filtro por mês e cartões de saldo
+        ├── Cartoes.jsx      Cartões de crédito e faturas
         ├── Login.jsx        Tela de entrar e criar conta
         ├── TrocarSenha.jsx  Formulário de troca de senha
         ├── BotaoTema.jsx    Botão de tema claro/escuro

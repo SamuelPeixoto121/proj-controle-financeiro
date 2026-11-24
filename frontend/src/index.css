@@ -591,6 +591,38 @@ tfoot th {
   background: var(--despesa-claro);
 }
 
+/* Compra no cartão, embaixo da descrição: "💳 Nubank · compra em 05/12" */
+.compra-cartao {
+  display: block;
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: normal;
+}
+
+.dias-cartao {
+  white-space: nowrap;
+}
+
+/* Fatura do cartão: total, situação e botão de pagar */
+.fatura-resumo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin: 4px 0 8px;
+}
+
+.fatura-resumo > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: auto;
+}
+
+.fatura-resumo .situacao {
+  border: 1px solid var(--borda);
+}
+
 /* Marca ↻ das transações de série */
 .serie {
   color: var(--texto-suave);
@@ -1130,7 +1162,7 @@ tfoot th {
     flex: 1 1 140px;
   }
 
-  /* 4 abas não cabem numa linha: quebram em duas */
+  /* 5 abas não cabem numa linha: quebram em duas */
   .abas {
     flex-wrap: wrap;
   }
@@ -1209,6 +1241,12 @@ tfoot th {
   .tabela-resumo td:nth-child(2),
   .tabela-resumo th:nth-child(3),
   .tabela-resumo td:nth-child(3) {
+    display: none;
+  }
+
+  /* Fatura: no celular, sem a coluna Categoria */
+  .tabela-fatura th:nth-child(3),
+  .tabela-fatura td:nth-child(3) {
     display: none;
   }
 

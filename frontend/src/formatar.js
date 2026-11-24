@@ -51,3 +51,40 @@ export function variacao(atual, anterior) {
   if (!anterior) return null
   return Math.round(((atual - anterior) / Math.abs(anterior)) * 100)
 }
+
+// Em que dia vence a fatura de uma compra no cartão (mesma regra da API).
+// Compra antes do dia do fechamento: fatura que fecha neste mês; no dia do fechamento ou depois: a seguinte.
+// Se vence num dia menor que o do fechamento, vence no mês seguinte ao do fechamento.
+// ({ diaFechamento: 3, diaVencimento: 10 }, "2026-12-05") -> "2027-01-10"
+export function vencimentoDaFatura(cartao, dataCompra) {
+  const [ano, mes, dia] = dataCompra.split('-').map(Number)
+  let meses = ano * 12 + (mes - 1) // conta em meses, para virar o ano sem complicação
+  if (dia >= cartao.diaFechamento) meses++
+  if (cartao.diaVencimento < cartao.diaFechamento) meses++
+  const dois = (n) => String(n).padStart(2, '0')
+  return `${Math.floor(meses / 12)}-${dois((meses % 12) + 1)}-${dois(cartao.diaVencimento)}`
+}
+
+// Contas pendentes: junta as compras do mesmo cartão e vencimento numa linha só (a fatura).
+// As outras contas ficam como estão, e a ordem (por data) é mantida.
+export function agruparFaturas(transacoes) {
+  const resultado = []
+  const faturas = new Map()
+  for (const t of transacoes) {
+    if (t.cartaoId == null) {
+      resultado.push(t)
+      continue
+    }
+    const chave = `${t.cartaoId}|${t.data.slice(0, 10)}`
+    const fatura = faturas.get(chave)
+    if (fatura) {
+      fatura.valor = Math.round((fatura.valor + t.valor) * 100) / 100
+      fatura.compras++
+    } else {
+      const nova = { fatura: true, chave, cartaoId: t.cartaoId, cartao: t.cartao, data: t.data, valor: t.valor, compras: 1, atrasada: t.atrasada }
+      faturas.set(chave, nova)
+      resultado.push(nova)
+    }
+  }
+  return resultado
+}

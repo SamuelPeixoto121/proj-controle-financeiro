@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatarData, formatarMes, formatarReais, hoje, normalizar, previaDeParcelas, situacaoDe, variacao } from './formatar.js'
+import { formatarData, formatarMes, formatarReais, hoje, normalizar, previaDeParcelas, situacaoDe, variacao, vencimentoDaFatura, agruparFaturas } from './formatar.js'
 
 // O Intl usa espaço não separável depois do "R$"; aqui ele vira espaço normal para comparar.
 const semNbsp = (texto) => texto.replace(/ /g, ' ')
@@ -85,5 +85,38 @@ describe('variacao (comparação com o ano anterior)', () => {
 
   it('base negativa: melhorar de −100 para −50 é subir', () => {
     expect(variacao(-50, -100)).toBe(50)
+  })
+})
+
+describe('vencimentoDaFatura (mesma regra da API)', () => {
+  const nubank = { diaFechamento: 3, diaVencimento: 10 }
+  const fechaDia25 = { diaFechamento: 25, diaVencimento: 5 }
+  it.each([
+    [nubank, '2030-12-01', '2030-12-10'], // antes do fechamento
+    [nubank, '2030-12-03', '2031-01-10'], // no dia do fechamento: próxima (e vira o ano)
+    [nubank, '2030-12-31', '2031-01-10'],
+    [fechaDia25, '2030-12-24', '2031-01-05'], // vence no mês seguinte ao do fechamento
+    [fechaDia25, '2030-12-25', '2031-02-05'],
+    [fechaDia25, '2031-01-10', '2031-02-05'],
+  ])('%o, compra em %s -> vence %s', (cartao, compra, vence) => {
+    expect(vencimentoDaFatura(cartao, compra)).toBe(vence)
+  })
+})
+
+describe('agruparFaturas (contas do mês)', () => {
+  it('junta as compras do mesmo cartão e vencimento e mantém o resto', () => {
+    const lista = [
+      { id: 1, cartaoId: 7, cartao: 'Nubank', data: '2030-12-10T00:00:00', valor: 50.1, atrasada: false },
+      { id: 2, cartaoId: null, data: '2030-12-10T00:00:00', valor: 999 },
+      { id: 3, cartaoId: 7, cartao: 'Nubank', data: '2030-12-10T00:00:00', valor: 0.2, atrasada: false },
+      { id: 4, cartaoId: 8, cartao: 'Inter', data: '2030-12-10T00:00:00', valor: 30, atrasada: false },
+      { id: 5, cartaoId: 7, cartao: 'Nubank', data: '2031-01-10T00:00:00', valor: 10, atrasada: false },
+    ]
+    const r = agruparFaturas(lista)
+    expect(r.map((x) => x.fatura ? `${x.cartao} ${x.data.slice(0, 10)}` : x.id)).toEqual([
+      'Nubank 2030-12-10', 2, 'Inter 2030-12-10', 'Nubank 2031-01-10',
+    ])
+    expect(r[0].valor).toBe(50.3) // sem 50.300000000000004
+    expect(r[0].compras).toBe(2)
   })
 })

@@ -23,6 +23,12 @@ public class Transacao
     // Mesma série = criadas juntas com "Repetir por N meses". Vazio = transação avulsa.
     public Guid? SerieId { get; set; }
 
+    // Compra no cartão de crédito: "Data" é o vencimento da fatura e "DataCompra" é o dia da compra.
+    // Vazios = transação comum (conta/dinheiro).
+    public int? CartaoId { get; set; }
+    public Cartao? Cartao { get; set; }
+    public DateTime? DataCompra { get; set; }
+
     // Dono da transação. Fica vazio só nos dados antigos, até o primeiro cadastro.
     [JsonIgnore]
     public int? UsuarioId { get; set; }

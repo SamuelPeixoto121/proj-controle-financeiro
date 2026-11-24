@@ -8,6 +8,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Categoria> Categorias => Set<Categoria>();
     public DbSet<Transacao> Transacoes => Set<Transacao>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
+    public DbSet<Cartao> Cartoes => Set<Cartao>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,6 +33,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasOne<Usuario>()
             .WithMany()
             .HasForeignKey(t => t.UsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Não deixa apagar um cartão que tem compras.
+        modelBuilder.Entity<Transacao>()
+            .HasOne(t => t.Cartao)
+            .WithMany()
+            .HasForeignKey(t => t.CartaoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Cartao>()
+            .HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(c => c.UsuarioId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

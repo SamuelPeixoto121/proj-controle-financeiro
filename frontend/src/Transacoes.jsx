@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { baixarArquivo, gerarCsv } from './csv.js'
-import { formatarData, formatarReais, hoje, normalizar, previaDeParcelas, situacaoDe } from './formatar.js'
+import {
+  formatarData,
+  formatarReais,
+  hoje,
+  normalizar,
+  previaDeParcelas,
+  situacaoDe,
+  vencimentoDaFatura,
+} from './formatar.js'
 
 const formularioVazio = () => ({
   descricao: '',
@@ -9,6 +17,7 @@ const formularioVazio = () => ({
   data: hoje(),
   tipo: 'Despesa',
   categoriaId: '',
+  cartaoId: '', // vazio = conta/dinheiro
   pago: true,
 })
 
@@ -35,6 +44,7 @@ function BotaoSituacao({ transacao, aoClicar }) {
 function Transacoes({ mes, atualizacao, aoAlterar }) {
   const [transacoes, setTransacoes] = useState([])
   const [categorias, setCategorias] = useState([])
+  const [cartoes, setCartoes] = useState([])
   const [formulario, setFormulario] = useState(formularioVazio)
   const [editandoId, setEditandoId] = useState(null)
   const [erro, setErro] = useState('')
@@ -52,15 +62,19 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
 
   // Recarrega sempre que algo mudar em qualquer parte da tela ou o mês mudar.
   useEffect(() => {
-    Promise.all([api(mes ? `/transacoes?mes=${mes}` : '/transacoes'), api('/categorias')])
-      .then(([listaTransacoes, listaCategorias]) => {
+    Promise.all([api(mes ? `/transacoes?mes=${mes}` : '/transacoes'), api('/categorias'), api('/cartoes')])
+      .then(([listaTransacoes, listaCategorias, listaCartoes]) => {
         setTransacoes(listaTransacoes)
         setCategorias(listaCategorias)
+        setCartoes(listaCartoes)
       })
       .catch((e) => setErro(e.message))
   }, [mes, atualizacao])
 
   const previaParcelas = previaDeParcelas(formulario.valor, vezes)
+  // Criando no cartão: em qual fatura a compra entra.
+  const cartaoEscolhido = cartoes.find((c) => c.id === Number(formulario.cartaoId))
+  const vencimento = !editandoId && cartaoEscolhido && formulario.data && vencimentoDaFatura(cartaoEscolhido, formulario.data)
 
   const termo = normalizar(busca.trim())
   const filtradas = transacoes.filter(
@@ -88,9 +102,14 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
 
   function alterarCampo(evento) {
     const { name, value } = evento.target
+    const novo = { ...formulario, [name]: value }
+    // Cartão é só para despesas.
+    if (name === 'tipo' && value === 'Receita') novo.cartaoId = ''
     // Ao criar: data de hoje ou passada já vem como paga; data futura, como pendente.
-    const pago = name === 'data' && !editandoId ? value <= hoje() : formulario.pago
-    setFormulario({ ...formulario, [name]: value, pago })
+    // No cartão, começa pendente (fica paga quando a fatura for paga).
+    if (!editandoId && (name === 'data' || name === 'cartaoId' || name === 'tipo'))
+      novo.pago = !novo.cartaoId && novo.data <= hoje()
+    setFormulario(novo)
   }
 
   function cancelarEdicao() {
@@ -110,6 +129,7 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
       ...formulario,
       valor: Number(formulario.valor),
       categoriaId: Number(formulario.categoriaId),
+      cartaoId: formulario.cartaoId ? Number(formulario.cartaoId) : null,
     }
     try {
       if (editandoId) {
@@ -131,9 +151,11 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
     setFormulario({
       descricao: transacao.descricao,
       valor: String(transacao.valor),
-      data: transacao.data.slice(0, 10),
+      // No cartão, o formulário mostra o dia da compra (a API recalcula a fatura).
+      data: (transacao.dataCompra ?? transacao.data).slice(0, 10),
       tipo: transacao.tipo,
       categoriaId: String(transacao.categoriaId),
+      cartaoId: transacao.cartaoId ? String(transacao.cartaoId) : '',
       pago: transacao.pago,
     })
     setEditandoSerie(transacao.serieId != null)
@@ -196,7 +218,7 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
             />
           </label>
           <label className="campo">
-            Data
+            {formulario.cartaoId ? 'Data da compra' : 'Data'}
             <input name="data" type="date" value={formulario.data} onChange={alterarCampo} />
           </label>
           <label className="campo">
@@ -217,6 +239,19 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
               ))}
             </select>
           </label>
+          {formulario.tipo === 'Despesa' && cartoes.length > 0 && (
+            <label className="campo">
+              Pagamento
+              <select name="cartaoId" value={formulario.cartaoId} onChange={alterarCampo}>
+                <option value="">Conta/dinheiro</option>
+                {cartoes.map((cartao) => (
+                  <option key={cartao.id} value={cartao.id}>
+                    💳 {cartao.nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {!editandoId && (
             <label className="campo">
               Lançamento
@@ -242,6 +277,12 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
           )}
           {!editandoId && lancamento === 'parcelar' && previaParcelas && (
             <p className="previa-parcelas">{previaParcelas}</p>
+          )}
+          {vencimento && (
+            <p className="previa-parcelas">
+              💳 {lancamento === 'parcelar' ? 'A 1ª parcela entra' : 'Entra'} na fatura que vence em{' '}
+              <strong>{formatarData(vencimento)}</strong>
+            </p>
           )}
           <label className="seguintes">
             <input
@@ -361,6 +402,11 @@ function Transacoes({ mes, atualizacao, aoAlterar }) {
                               {' '}
                               ↻
                             </span>
+                          )}
+                          {transacao.cartao && (
+                            <small className="compra-cartao">
+                              💳 {transacao.cartao.nome} · compra em {formatarData(transacao.dataCompra)}
+                            </small>
                           )}
                         </td>
                         <td>{transacao.categoria?.nome}</td>

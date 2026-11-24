@@ -22,6 +22,34 @@ namespace ControleFinanceiro.Migrations
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
+            modelBuilder.Entity("ControleFinanceiro.Models.Cartao", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DiaFechamento")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DiaVencimento")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("Cartoes");
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Models.Categoria", b =>
                 {
                     b.Property<int>("Id")
@@ -56,10 +84,16 @@ namespace ControleFinanceiro.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("CartaoId")
+                        .HasColumnType("int");
+
                     b.Property<int>("CategoriaId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("Data")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DataCompra")
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("Descricao")
@@ -83,6 +117,8 @@ namespace ControleFinanceiro.Migrations
                         .HasColumnType("decimal(10,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CartaoId");
 
                     b.HasIndex("CategoriaId");
 
@@ -116,6 +152,14 @@ namespace ControleFinanceiro.Migrations
                     b.ToTable("Usuarios");
                 });
 
+            modelBuilder.Entity("ControleFinanceiro.Models.Cartao", b =>
+                {
+                    b.HasOne("ControleFinanceiro.Models.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("ControleFinanceiro.Models.Categoria", b =>
                 {
                     b.HasOne("ControleFinanceiro.Models.Usuario", null)
@@ -126,6 +170,11 @@ namespace ControleFinanceiro.Migrations
 
             modelBuilder.Entity("ControleFinanceiro.Models.Transacao", b =>
                 {
+                    b.HasOne("ControleFinanceiro.Models.Cartao", "Cartao")
+                        .WithMany()
+                        .HasForeignKey("CartaoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("ControleFinanceiro.Models.Categoria", "Categoria")
                         .WithMany()
                         .HasForeignKey("CategoriaId")
@@ -136,6 +185,8 @@ namespace ControleFinanceiro.Migrations
                         .WithMany()
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Cartao");
 
                     b.Navigation("Categoria");
                 });

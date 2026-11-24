@@ -228,10 +228,120 @@ rotas.MapDelete("/categorias/{id}", async (int id, ClaimsPrincipal user, AppDbCo
     return Results.NoContent();
 });
 
+// Cartões de crédito
+rotas.MapGet("/cartoes", async (ClaimsPrincipal user, AppDbContext db) =>
+{
+    var usuarioId = UsuarioId(user);
+    return await db.Cartoes.Where(c => c.UsuarioId == usuarioId).OrderBy(c => c.Nome).ToListAsync();
+});
+
+rotas.MapPost("/cartoes", async (Cartao entrada, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var erro = ValidarCartao(entrada);
+    if (erro is not null)
+        return Results.BadRequest(erro);
+
+    var cartao = new Cartao
+    {
+        Nome = entrada.Nome.Trim(),
+        DiaFechamento = entrada.DiaFechamento,
+        DiaVencimento = entrada.DiaVencimento,
+        UsuarioId = UsuarioId(user),
+    };
+    db.Cartoes.Add(cartao);
+    await db.SaveChangesAsync();
+    return Results.Created($"/cartoes/{cartao.Id}", cartao);
+});
+
+// Mudar os dias vale para as próximas compras; as já lançadas continuam nas faturas em que estão.
+rotas.MapPut("/cartoes/{id}", async (int id, Cartao entrada, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var erro = ValidarCartao(entrada);
+    if (erro is not null)
+        return Results.BadRequest(erro);
+
+    var usuarioId = UsuarioId(user);
+    var cartao = await db.Cartoes.FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId);
+    if (cartao is null)
+        return Results.NotFound();
+
+    cartao.Nome = entrada.Nome.Trim();
+    cartao.DiaFechamento = entrada.DiaFechamento;
+    cartao.DiaVencimento = entrada.DiaVencimento;
+    await db.SaveChangesAsync();
+    return Results.Ok(cartao);
+});
+
+rotas.MapDelete("/cartoes/{id}", async (int id, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var usuarioId = UsuarioId(user);
+    var cartao = await db.Cartoes.FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId);
+    if (cartao is null)
+        return Results.NotFound();
+
+    if (await db.Transacoes.AnyAsync(t => t.CartaoId == id))
+        return Results.Conflict("Não é possível excluir um cartão que possui compras.");
+
+    db.Cartoes.Remove(cartao);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+});
+
+// Faturas do cartão: as compras agrupadas pelo vencimento, da mais antiga para a mais nova.
+rotas.MapGet("/cartoes/{id}/faturas", async (int id, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var usuarioId = UsuarioId(user);
+    var cartao = await db.Cartoes.FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId);
+    if (cartao is null)
+        return Results.NotFound();
+
+    var compras = await db.Transacoes.Include(t => t.Categoria)
+        .Where(t => t.CartaoId == id && t.UsuarioId == usuarioId)
+        .OrderBy(t => t.DataCompra).ThenBy(t => t.Id)
+        .ToListAsync();
+
+    var hoje = DateTime.Today;
+    return Results.Ok(compras.GroupBy(t => t.Data).OrderBy(g => g.Key).Select(g =>
+    {
+        var vencimento = g.Key;
+        // A fatura fecha no mesmo mês do vencimento, ou no mês anterior se vence num dia menor.
+        var mesDoFechamento = cartao.DiaVencimento > cartao.DiaFechamento ? vencimento : vencimento.AddMonths(-1);
+        var fechamento = new DateTime(mesDoFechamento.Year, mesDoFechamento.Month, cartao.DiaFechamento);
+        var paga = g.All(t => t.Pago);
+        return new
+        {
+            vencimento,
+            fechamento,
+            total = g.Sum(t => t.Valor),
+            situacao = paga ? "Paga" : vencimento < hoje ? "Atrasada" : hoje >= fechamento ? "Fechada" : "Aberta",
+            compras = g.Select(t => new { t.Id, t.Descricao, t.Valor, t.DataCompra, categoria = t.Categoria?.Nome, t.Pago }),
+        };
+    }));
+});
+
+// Paga (ou desfaz o pagamento de) uma fatura inteira: todas as compras com esse vencimento.
+rotas.MapPut("/cartoes/{id}/faturas/{vencimento}/pago", async (int id, string vencimento, Situacao entrada, ClaimsPrincipal user, AppDbContext db) =>
+{
+    if (!DateTime.TryParseExact(vencimento, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var data))
+        return Results.BadRequest("Vencimento inválido. Use o formato AAAA-MM-DD.");
+
+    var usuarioId = UsuarioId(user);
+    var compras = await db.Transacoes
+        .Where(t => t.CartaoId == id && t.UsuarioId == usuarioId && t.Data == data)
+        .ToListAsync();
+    if (compras.Count == 0)
+        return Results.NotFound();
+
+    foreach (var compra in compras)
+        compra.Pago = entrada.Pago;
+    await db.SaveChangesAsync();
+    return Results.Ok(new { compras = compras.Count });
+});
+
 // Transações
 rotas.MapGet("/transacoes", async (string? mes, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var consulta = FiltrarPorMes(DoUsuario(db.Transacoes.Include(t => t.Categoria), user), mes);
+    var consulta = FiltrarPorMes(DoUsuario(db.Transacoes.Include(t => t.Categoria).Include(t => t.Cartao), user), mes);
     if (consulta is null)
         return Results.BadRequest(MesInvalido);
 
@@ -242,7 +352,7 @@ rotas.MapGet("/transacoes", async (string? mes, ClaimsPrincipal user, AppDbConte
 });
 
 rotas.MapGet("/transacoes/{id}", async (int id, ClaimsPrincipal user, AppDbContext db) =>
-    await DoUsuario(db.Transacoes.Include(t => t.Categoria), user).FirstOrDefaultAsync(t => t.Id == id) is Transacao transacao
+    await DoUsuario(db.Transacoes.Include(t => t.Categoria).Include(t => t.Cartao), user).FirstOrDefaultAsync(t => t.Id == id) is Transacao transacao
         ? Results.Ok(transacao)
         : Results.NotFound());
 
@@ -276,6 +386,7 @@ rotas.MapPost("/transacoes", async (Transacao entrada, string? repetir, string? 
 
     // Repetindo ou parcelando, todas as cópias ganham a mesma marca de série.
     Guid? serieId = meses > 1 ? Guid.NewGuid() : null;
+    var cartao = entrada.CartaoId is null ? null : await db.Cartoes.FindAsync(entrada.CartaoId);
 
     var transacoes = Enumerable.Range(0, meses).Select(i =>
     {
@@ -283,6 +394,14 @@ rotas.MapPost("/transacoes", async (Transacao entrada, string? repetir, string? 
         CopiarCampos(entrada, copia);
         // Sempre a partir da data original: 31/01 vira 28/02 (ou 29/02) e depois 31/03.
         copia.Data = entrada.Data.AddMonths(i);
+        if (cartao is not null)
+        {
+            // No cartão, a data informada é a da compra.
+            // Parcelar: uma compra só, uma parcela em cada fatura seguinte.
+            // Repetir (ex.: assinatura): uma compra nova por mês.
+            copia.DataCompra = parcelado ? entrada.Data : copia.Data;
+            copia.Data = VencimentoDaFatura(cartao, copia.DataCompra.Value).AddMonths(parcelado ? i : 0);
+        }
         // Só a 1ª segue o "já foi paga"; as dos meses seguintes começam pendentes.
         if (i > 0)
             copia.Pago = false;
@@ -300,6 +419,7 @@ rotas.MapPost("/transacoes", async (Transacao entrada, string? repetir, string? 
 
     var transacao = transacoes[0];
     await db.Entry(transacao).Reference(t => t.Categoria).LoadAsync();
+    await db.Entry(transacao).Reference(t => t.Cartao).LoadAsync();
     return Results.Created($"/transacoes/{transacao.Id}", transacao);
 });
 
@@ -316,7 +436,23 @@ rotas.MapPut("/transacoes/{id}", async (int id, Transacao entrada, bool? seguint
         return Results.BadRequest(erro);
 
     var dataOriginal = transacao.Data;
+    // Uma parcela no cartão fica N faturas depois da fatura da compra (a 3ª parcela, 2 depois).
+    // Ao recalcular a fatura (outra data ou outro cartão), mantém essa distância.
+    var faturasDepois = 0;
+    if (transacao.CartaoId is not null && transacao.DataCompra is not null
+        && await db.Cartoes.FindAsync(transacao.CartaoId) is Cartao cartaoAntigo)
+    {
+        var faturaDaCompra = VencimentoDaFatura(cartaoAntigo, transacao.DataCompra.Value);
+        faturasDepois = (dataOriginal.Year - faturaDaCompra.Year) * 12 + dataOriginal.Month - faturaDaCompra.Month;
+    }
+
     CopiarCampos(entrada, transacao);
+    transacao.DataCompra = null;
+    if (transacao.CartaoId is not null && await db.Cartoes.FindAsync(transacao.CartaoId) is Cartao cartao)
+    {
+        transacao.DataCompra = entrada.Data;
+        transacao.Data = VencimentoDaFatura(cartao, entrada.Data).AddMonths(faturasDepois);
+    }
 
     if (seguintes == true && transacao.SerieId is not null)
     {
@@ -337,6 +473,7 @@ rotas.MapPut("/transacoes/{id}", async (int id, Transacao entrada, bool? seguint
     // Um único SaveChanges: grava todas ou nenhuma.
     await db.SaveChangesAsync();
     await db.Entry(transacao).Reference(t => t.Categoria).LoadAsync();
+    await db.Entry(transacao).Reference(t => t.Cartao).LoadAsync();
     return Results.Ok(transacao);
 });
 
@@ -393,7 +530,7 @@ rotas.MapPost("/transacoes/importar", async (List<ItemImportacao> itens, ClaimsP
 // Marca só a situação (paga / pendente), sem mexer no resto da transação.
 rotas.MapPut("/transacoes/{id}/pago", async (int id, Situacao entrada, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var transacao = await DoUsuario(db.Transacoes.Include(t => t.Categoria), user).FirstOrDefaultAsync(t => t.Id == id);
+    var transacao = await DoUsuario(db.Transacoes.Include(t => t.Categoria).Include(t => t.Cartao), user).FirstOrDefaultAsync(t => t.Id == id);
     if (transacao is null)
         return Results.NotFound();
 
@@ -406,7 +543,7 @@ rotas.MapPut("/transacoes/{id}/pago", async (int id, Situacao entrada, ClaimsPri
 // Sem mês: todas as pendentes.
 rotas.MapGet("/pendentes", async (string? mes, ClaimsPrincipal user, AppDbContext db) =>
 {
-    var consulta = DoUsuario(db.Transacoes.Include(t => t.Categoria), user).Where(t => !t.Pago);
+    var consulta = DoUsuario(db.Transacoes.Include(t => t.Categoria).Include(t => t.Cartao), user).Where(t => !t.Pago);
     if (mes is not null)
     {
         if (!DateTime.TryParseExact(mes, "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var inicio))
@@ -430,6 +567,9 @@ rotas.MapGet("/pendentes", async (string? mes, ClaimsPrincipal user, AppDbContex
             t.Tipo,
             categoria = t.Categoria?.Nome,
             t.SerieId,
+            // Compras no cartão: o front junta as do mesmo cartão e vencimento numa linha só (a fatura).
+            t.CartaoId,
+            cartao = t.Cartao?.Nome,
             // Atrasada: a data já passou e ainda não foi paga/recebida.
             atrasada = t.Data < hoje,
         }),
@@ -654,6 +794,13 @@ static async Task<string?> ValidarTransacao(Transacao entrada, int usuarioId, Ap
         return "O tipo deve ser Receita ou Despesa.";
     if (!await db.Categorias.AnyAsync(c => c.Id == entrada.CategoriaId && c.UsuarioId == usuarioId))
         return "Categoria não encontrada.";
+    if (entrada.CartaoId is not null)
+    {
+        if (entrada.Tipo != TipoTransacao.Despesa)
+            return "Só despesas podem ser feitas no cartão de crédito.";
+        if (!await db.Cartoes.AnyAsync(c => c.Id == entrada.CartaoId && c.UsuarioId == usuarioId))
+            return "Cartão não encontrado.";
+    }
     return null;
 }
 
@@ -678,6 +825,32 @@ static void CopiarCampos(Transacao origem, Transacao destino)
     destino.Tipo = origem.Tipo;
     destino.CategoriaId = origem.CategoriaId;
     destino.Pago = origem.Pago;
+    destino.CartaoId = origem.CartaoId;
+}
+
+static string? ValidarCartao(Cartao entrada)
+{
+    if (string.IsNullOrWhiteSpace(entrada.Nome))
+        return "O nome do cartão é obrigatório.";
+    if (entrada.DiaFechamento is < 1 or > 28 || entrada.DiaVencimento is < 1 or > 28)
+        return "Os dias de fechamento e de vencimento devem ser entre 1 e 28.";
+    if (entrada.DiaFechamento == entrada.DiaVencimento)
+        return "O vencimento deve ser num dia diferente do fechamento.";
+    return null;
+}
+
+// Em que dia vence a fatura de uma compra feita nesse dia.
+// Compra antes do dia do fechamento: entra na fatura que fecha neste mês; no dia do fechamento
+// ou depois: na fatura seguinte. Se o vencimento é num dia menor que o fechamento
+// (fecha dia 25, vence dia 5), a fatura vence no mês seguinte ao do fechamento.
+// Ex.: fecha dia 3 e vence dia 10. Compra em 01/12 -> vence 10/12; compra em 05/12 -> vence 10/01.
+static DateTime VencimentoDaFatura(Cartao cartao, DateTime compra)
+{
+    var mesDoFechamento = new DateTime(compra.Year, compra.Month, 1);
+    if (compra.Day >= cartao.DiaFechamento)
+        mesDoFechamento = mesDoFechamento.AddMonths(1);
+    var mesDoVencimento = cartao.DiaVencimento > cartao.DiaFechamento ? mesDoFechamento : mesDoFechamento.AddMonths(1);
+    return mesDoVencimento.AddDays(cartao.DiaVencimento - 1);
 }
 
 record Credenciais(string? Email, string? Senha);
