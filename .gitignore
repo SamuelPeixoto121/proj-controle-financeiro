@@ -11,3 +11,5 @@ obj/
 # Dependências e build do React
 node_modules/
 frontend/dist/
+# Backups do banco (têm dados pessoais; nunca vão para o GitHub)
+backups/

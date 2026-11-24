@@ -100,6 +100,33 @@ Abra **http://localhost:5173** no navegador e clique em **Criar conta**. A API p
 
 > Se o banco já tinha categorias e transações de antes do login existir, elas passam a ser da **primeira conta criada**.
 
+## Backup automático
+
+Os scripts da pasta `scripts` fazem uma cópia completa do banco (com o `mysqldump`, que vem com o MySQL), compactada em `.zip`, e guardam os **30 backups mais recentes** na pasta **`OneDrive\Backups\ControleFinanceiro`** (assim eles também ficam na nuvem; sem OneDrive, vão para a pasta `backups` do projeto). A senha do banco é lida dos User Secrets e não aparece em lugar nenhum. Os backups têm dados pessoais e **nunca vão para o GitHub** (a pasta `backups/` está no `.gitignore`).
+
+Comandos (no PowerShell, na pasta do projeto):
+
+```powershell
+# Ligar o backup automático: todo dia às 21h (ou assim que o PC for ligado, se estava desligado nesse horário)
+powershell -ExecutionPolicy Bypass -File scripts\agendar-backup.ps1
+
+# Outro horário
+powershell -ExecutionPolicy Bypass -File scripts\agendar-backup.ps1 -Hora 08:30
+
+# Desligar o backup automático
+powershell -ExecutionPolicy Bypass -File scripts\agendar-backup.ps1 -Remover
+
+# Fazer um backup agora
+powershell -ExecutionPolicy Bypass -File scripts\backup.ps1
+
+# Restaurar um backup (mostra a lista e pede para digitar RESTAURAR)
+powershell -ExecutionPolicy Bypass -File scripts\restaurar.ps1
+```
+
+- A tarefa aparece no **Agendador de Tarefas** do Windows como "Backup Controle Financeiro" e roda com o seu usuário (não precisa ser administrador).
+- Cada execução é anotada em `backup.log`, na mesma pasta dos backups (inclusive os erros).
+- **Restaurar substitui os dados atuais** pelos do backup escolhido. Antes, o script faz um backup do estado atual, para dar para desfazer. De preferência, pare a API (Ctrl+C) antes de restaurar.
+
 ## Como rodar os testes
 
 O projeto tem testes automatizados para a API e para o front-end. Rode-os antes e depois de mudar o código: se algo quebrar, o teste mostra o que era esperado e o que veio.
@@ -191,6 +218,7 @@ proj-controle-financeiro/
 │   └── Program.cs           Configuração da API, login e todas as rotas
 ├── tests/
 │   └── ControleFinanceiro.Tests/  Testes automatizados da API (xUnit)
+├── scripts/                 Backup automático e restauração do banco (PowerShell)
 └── frontend/                Front-end em React (os testes ficam em src/*.test.js)
     └── src/
         ├── api.js           Função que chama a API e trata os erros
