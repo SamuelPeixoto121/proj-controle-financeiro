@@ -23,12 +23,13 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 - **Gráfico de despesas por categoria**: barras da maior para a menor despesa, com valor e porcentagem
 - **Resumo mês a mês**: receitas e despesas de cada mês do ano lado a lado, em gráfico e em tabela com o saldo de cada mês, e um gráfico de linha com a evolução do saldo acumulado (linha tracejada nos meses que ainda não chegaram)
 - **Comparação com o ano anterior**: receitas, despesas e saldo do ano com a variação em relação ao ano anterior, e as despesas por categoria dos dois anos (as que mais mudaram primeiro). No ano atual, compara o mesmo período (jan até o mês atual) nos dois anos
+- **Relatório para imprimir ou salvar em PDF**: na aba Relatório, escolha um mês ou um ano e clique em "Imprimir / Salvar PDF" (na janela do navegador, escolha "Salvar como PDF"). O do mês traz o resumo, a meta de economia, as despesas por categoria (com as metas), o saldo das contas, as contas pendentes e todas as transações; o do ano traz o resumo, a comparação com o ano anterior, a meta do ano, a tabela mês a mês, as despesas por categoria e, se marcado, todas as transações. Na impressão só o relatório aparece, sempre no tema claro e em A4
 - **Meta de economia**: defina quanto quer guardar por mês. A Visão geral mostra o quanto o saldo do mês (receitas − despesas, contando o pendente) cobre da meta, com barra e situação (✔ batida, ○ faltando, ⚠ no vermelho). No resumo do ano aparece a meta do ano (12 × a mensal), a previsão de quanto será guardado e um ✔ nos meses que bateram a meta
 - **Contas**: cada usuário começa com a "Conta principal" e pode criar outras (banco, carteira, poupança), cada uma com saldo inicial. A aba Contas mostra o saldo de cada uma (saldo inicial + o que já foi recebido − o que já foi pago ± transferências) e o total. Ao lançar uma transação, escolhe-se a conta (o campo só aparece com mais de uma); a lista de transações pode ser filtrada por conta, e a importação de extrato vai para a conta escolhida
 - **Transferências entre contas**: tiram de uma conta e põem na outra, sem contar como receita nem despesa; com data futura ficam agendadas e só mudam os saldos quando o dia chega
 - **Cartão de crédito**: cadastre o cartão com o dia do fechamento e do vencimento e escolha-o em "Pagamento" ao lançar uma despesa. A compra conta no mês em que a fatura vence (compra no dia do fechamento ou depois entra na fatura seguinte); parcelado no cartão põe uma parcela em cada fatura. A aba Cartões mostra cada fatura (total, compras e situação: Aberta, Fechada, Paga ou Atrasada) com o botão "Pagar fatura", e nas contas do mês a fatura aparece numa linha só
 
-A tela é dividida em cinco abas: **Visão geral** (números do mês, contas a pagar, metas, gráficos e resumo mês a mês), **Transações**, **Contas** (contas, transferências, cartões e faturas), **Categorias** e **Importar**. O layout se adapta ao celular e tem **modo escuro**: por padrão segue o tema do sistema, e o botão 🌙/☀️ no topo troca na hora (a escolha fica guardada no navegador).
+A tela é dividida em seis abas: **Visão geral** (números do mês, contas a pagar, metas, gráficos e resumo mês a mês), **Transações**, **Contas** (contas, transferências, cartões e faturas), **Categorias**, **Importar** e **Relatório**. O layout se adapta ao celular e tem **modo escuro**: por padrão segue o tema do sistema, e o botão 🌙/☀️ no topo troca na hora (a escolha fica guardada no navegador).
 
 ## Tecnologias
 
@@ -248,6 +249,8 @@ proj-controle-financeiro/
         ├── lerExtrato.js    Leitura de extratos CSV (separador, números, datas, colunas)
         ├── Importar.jsx     Tela de importação de extrato
         ├── App.jsx          Cabeçalho, abas, filtro por mês e cartões de saldo
+        ├── Relatorio.jsx    Aba Relatório (mês ou ano, para imprimir/PDF)
+        ├── relatorio.js     Contas do relatório (despesas por categoria, %...)
         ├── MetaEconomia.jsx Card da meta de economia do mês
         ├── BarraEconomia.jsx Barra de progresso da meta (no mês e no ano)
         ├── Contas.jsx       Aba Contas: saldo de cada conta e transferências

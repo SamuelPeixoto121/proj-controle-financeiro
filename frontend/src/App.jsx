@@ -10,11 +10,12 @@ import Importar from './Importar.jsx'
 import Login from './Login.jsx'
 import MetaEconomia from './MetaEconomia.jsx'
 import MetasDoMes from './MetasDoMes.jsx'
+import Relatorio from './Relatorio.jsx'
 import ResumoMensal from './ResumoMensal.jsx'
 import Transacoes from './Transacoes.jsx'
 import TrocarSenha from './TrocarSenha.jsx'
 
-const ABAS = ['Visão geral', 'Transações', 'Contas', 'Categorias', 'Importar']
+const ABAS = ['Visão geral', 'Transações', 'Contas', 'Categorias', 'Importar', 'Relatório']
 
 // O navegador lembra a última aba aberta (se não der para ler, abre a primeira).
 function abaSalva() {
@@ -210,6 +211,8 @@ function App() {
         {aba === 'Categorias' && <Categorias aoAlterar={aoAlterar} />}
 
         {aba === 'Importar' && <Importar aoAlterar={aoAlterar} />}
+
+        {aba === 'Relatório' && <Relatorio email={usuario.email} atualizacao={atualizacao} />}
       </main>
     </>
   )

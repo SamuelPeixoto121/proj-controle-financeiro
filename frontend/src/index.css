@@ -1239,7 +1239,7 @@ tfoot th {
     flex: 1 1 140px;
   }
 
-  /* 5 abas não cabem numa linha: quebram em duas */
+  /* 6 abas não cabem numa linha: quebram em duas */
   .abas {
     flex-wrap: wrap;
   }
@@ -1453,5 +1453,164 @@ tfoot th {
   .tabela-transacoes td:nth-child(7) {
     grid-area: acoes;
     padding-top: 4px;
+  }
+}
+
+/* =========================================================
+   Relatório (aba Relatório) e impressão
+   ========================================================= */
+.relatorio-opcoes {
+  align-items: end;
+}
+
+.relatorio-cabecalho {
+  border-bottom: 2px solid var(--borda-forte);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.relatorio-cabecalho h2 {
+  margin: 0 0 2px;
+}
+
+.relatorio-cabecalho p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.relatorio-bloco {
+  margin-top: 20px;
+}
+
+.relatorio-bloco h3 {
+  font-size: 1.05rem;
+  margin: 0 0 6px;
+}
+
+.relatorio-bloco > p {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+}
+
+/* Resumo: rótulo em cima, valor embaixo, lado a lado */
+.relatorio-resumo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+}
+
+.relatorio-resumo dt {
+  color: var(--texto-suave);
+  font-size: 0.85rem;
+}
+
+.relatorio-resumo dd {
+  margin: 2px 0 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.relatorio-resumo dd small {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: normal;
+  color: var(--texto-suave);
+}
+
+.tabela-relatorio {
+  font-size: 0.9rem;
+}
+
+.tabela-relatorio th,
+.tabela-relatorio td {
+  padding: 6px 8px;
+}
+
+/* No celular, a tabela do relatório rola de lado dentro do card (no papel, cabe inteira) */
+@media (max-width: 600px) {
+  .relatorio {
+    overflow-x: auto;
+  }
+}
+
+/* Impressão (e "Salvar como PDF"): só o relatório, sempre no tema claro, em A4 */
+@page {
+  size: A4;
+  margin: 14mm 12mm;
+}
+
+@media print {
+  /* Mais específico que os seletores do tema escuro: no papel, sempre as cores claras */
+  html:root:not([data-imprimir]) {
+    color-scheme: light;
+    --fundo: #ffffff;
+    --superficie: #ffffff;
+    --borda: #d5dae0;
+    --borda-forte: #9aa4b0;
+    --texto: #111111;
+    --texto-suave: #4a5563;
+    --trilho: #e6e9ee;
+    --linha-destaque: transparent;
+    --receita: #1b7f3b;
+    --despesa: #b00020;
+    --principal: #2a78d6;
+    --status-bom: #0ca30c;
+    --status-critico: #d03b3b;
+  }
+
+  body {
+    background: #ffffff;
+    font-size: 10.5pt;
+  }
+
+  .cabecalho,
+  .abas,
+  .filtro-mes,
+  .aviso,
+  .trocar-senha,
+  .nao-imprimir {
+    display: none !important;
+  }
+
+  main {
+    padding: 0;
+    max-width: none;
+  }
+
+  .relatorio.card {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+  }
+
+  /* Barras com cor também no papel */
+  .meta-trilho,
+  .meta-barra {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Não partir linhas de tabela nem separar o título do conteúdo */
+  tr,
+  .relatorio-resumo,
+  .economia {
+    break-inside: avoid;
+  }
+
+  .relatorio-bloco h3 {
+    break-after: avoid;
+  }
+
+  tbody tr:hover {
+    background: none;
+  }
+
+  /* Os totais (rodapé da tabela) só no fim, não repetidos em cada página */
+  tfoot {
+    display: table-row-group;
   }
 }
