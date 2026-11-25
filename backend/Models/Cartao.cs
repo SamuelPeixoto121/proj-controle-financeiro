@@ -17,4 +17,18 @@ public class Cartao
 
     [JsonIgnore]
     public int? UsuarioId { get; set; }
+
+    // Em que dia vence a fatura de uma compra feita nesse dia.
+    // Compra antes do dia do fechamento: entra na fatura que fecha neste mês; no dia do fechamento
+    // ou depois: na fatura seguinte. Se o vencimento é num dia menor que o fechamento
+    // (fecha dia 25, vence dia 5), a fatura vence no mês seguinte ao do fechamento.
+    // Ex.: fecha dia 3 e vence dia 10. Compra em 01/12 -> vence 10/12; compra em 05/12 -> vence 10/01.
+    public DateTime VencimentoDaFatura(DateTime compra)
+    {
+        var mesDoFechamento = new DateTime(compra.Year, compra.Month, 1);
+        if (compra.Day >= DiaFechamento)
+            mesDoFechamento = mesDoFechamento.AddMonths(1);
+        var mesDoVencimento = DiaVencimento > DiaFechamento ? mesDoFechamento : mesDoFechamento.AddMonths(1);
+        return mesDoVencimento.AddDays(DiaVencimento - 1);
+    }
 }

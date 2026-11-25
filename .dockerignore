@@ -1,0 +1,10 @@
+# O que não entra na montagem do site (Dockerfile)
+.git/
+.github/
+**/bin/
+**/obj/
+**/node_modules/
+frontend/dist/
+backups/
+scripts/
+tests/

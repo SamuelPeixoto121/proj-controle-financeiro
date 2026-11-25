@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -44,6 +45,14 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return Task.CompletedTask;
         };
+        // Conta de visitante (site de demonstração): o login vale só até a conta ser apagada.
+        options.Events.OnValidatePrincipal = context =>
+        {
+            var ate = context.Principal?.FindFirstValue("visitante_ate");
+            if (ate is not null && DateTime.Parse(ate, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind) < DateTime.UtcNow)
+                context.RejectPrincipal();
+            return Task.CompletedTask;
+        };
         options.Events.OnRedirectToAccessDenied = context =>
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
@@ -76,22 +85,62 @@ var app = builder.Build();
 const string MesInvalido = "Mês inválido. Use o formato AAAA-MM, por exemplo 2026-11.";
 var hasher = new PasswordHasher<Usuario>();
 
+// Site de demonstração (publicado): cadastro fechado, botão "Entrar como visitante" com dados
+// inventados e as tabelas criadas/atualizadas sozinhas ao ligar. No PC fica desligado.
+var demo = app.Configuration.GetValue<bool>("Demo:Ativo");
+if (demo)
+{
+    using var escopo = app.Services.CreateScope();
+    escopo.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+// As telas do React (só no site publicado, que tem a pasta wwwroot; no PC elas vêm do Vite).
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/", () => "API de controle financeiro no ar");
+app.MapGet("/saude", () => "API de controle financeiro no ar");
+
+// Diz à tela de login se este é o site de demonstração.
+app.MapGet("/auth/modo", () => new { Demo = demo });
+
+// Site de demonstração: cria uma conta de visitante, já com dados de exemplo, e entra com ela.
+app.MapPost("/auth/visitante", async (AppDbContext db, HttpContext http) =>
+{
+    if (!demo)
+        return Results.NotFound();
+
+    await ApagarVisitantesVencidos(db);
+    var usuario = new Usuario
+    {
+        Email = $"visitante-{Guid.NewGuid():N}@exemplo.com",
+        VisitanteAte = DateTime.UtcNow.AddHours(24),
+    };
+    usuario.SenhaHash = hasher.HashPassword(usuario, Guid.NewGuid().ToString()); // ninguém sabe a senha
+    db.Usuarios.Add(usuario);
+    await db.SaveChangesAsync();
+    await DadosDeExemplo.Criar(db, usuario.Id, DateTime.Today);
+
+    await Entrar(http, usuario);
+    return Results.Created("/auth/eu", new { usuario.Id, usuario.Email, Visitante = true });
+}).RequireRateLimiting("login");
 
 // Autenticação
 app.MapPost("/auth/cadastro", async (Credenciais entrada, AppDbContext db, HttpContext http) =>
 {
+    if (demo)
+        return Results.Json("Este é um site de demonstração: o cadastro está fechado. Use \"Entrar como visitante\".",
+            statusCode: StatusCodes.Status403Forbidden);
+
     var email = entrada.Email?.Trim().ToLowerInvariant() ?? "";
     if (!email.Contains('@') || email.Length > 256)
         return Results.BadRequest("Informe um e-mail válido.");
@@ -135,7 +184,7 @@ app.MapPost("/auth/login", async (Credenciais entrada, AppDbContext db, HttpCont
         return Results.Json("E-mail ou senha incorretos.", statusCode: StatusCodes.Status401Unauthorized);
 
     await Entrar(http, usuario);
-    return Results.Ok(new { usuario.Id, usuario.Email });
+    return Results.Ok(new { usuario.Id, usuario.Email, Visitante = usuario.VisitanteAte is not null });
 }).RequireRateLimiting("login");
 
 app.MapPost("/auth/logout", async (HttpContext http) =>
@@ -165,7 +214,7 @@ app.MapPost("/auth/trocar-senha", async (TrocaDeSenha entrada, ClaimsPrincipal u
 }).RequireAuthorization().RequireRateLimiting("login");
 
 app.MapGet("/auth/eu", (ClaimsPrincipal user) =>
-    new { Id = UsuarioId(user), Email = user.FindFirstValue(ClaimTypes.Email) })
+    new { Id = UsuarioId(user), Email = user.FindFirstValue(ClaimTypes.Email), Visitante = user.HasClaim(c => c.Type == "visitante_ate") })
     .RequireAuthorization();
 
 // Daqui para baixo, todas as rotas exigem login.
@@ -953,13 +1002,34 @@ static async Task<List<Transacao>> SeguintesDaSerie(AppDbContext db, ClaimsPrinc
 // Cria o cookie de login.
 static async Task Entrar(HttpContext http, Usuario usuario)
 {
-    var claims = new[]
+    var claims = new List<Claim>
     {
-        new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
-        new Claim(ClaimTypes.Email, usuario.Email),
+        new(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
+        new(ClaimTypes.Email, usuario.Email),
     };
+    if (usuario.VisitanteAte is not null)
+        claims.Add(new Claim("visitante_ate", usuario.VisitanteAte.Value.ToString("O", CultureInfo.InvariantCulture)));
     var identidade = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
     await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identidade));
+}
+
+// Apaga as contas de visitante que já passaram do prazo, com tudo o que era delas.
+// Usuários de verdade (VisitanteAte vazio) nunca entram nesta lista.
+static async Task ApagarVisitantesVencidos(AppDbContext db)
+{
+    var agora = DateTime.UtcNow;
+    var ids = await db.Usuarios.Where(u => u.VisitanteAte != null && u.VisitanteAte < agora)
+        .Select(u => (int?)u.Id).ToListAsync();
+    if (ids.Count == 0)
+        return;
+
+    // Na ordem certa: primeiro o que aponta para as contas, cartões e categorias.
+    await db.Transferencias.Where(t => ids.Contains(t.UsuarioId)).ExecuteDeleteAsync();
+    await db.Transacoes.Where(t => ids.Contains(t.UsuarioId)).ExecuteDeleteAsync();
+    await db.Cartoes.Where(c => ids.Contains(c.UsuarioId)).ExecuteDeleteAsync();
+    await db.Contas.Where(c => ids.Contains(c.UsuarioId)).ExecuteDeleteAsync();
+    await db.Categorias.Where(c => ids.Contains(c.UsuarioId)).ExecuteDeleteAsync();
+    await db.Usuarios.Where(u => ids.Contains(u.Id)).ExecuteDeleteAsync();
 }
 
 static string? ValidarCategoria(Categoria entrada)
@@ -1054,19 +1124,8 @@ static string? ValidarCartao(Cartao entrada)
     return null;
 }
 
-// Em que dia vence a fatura de uma compra feita nesse dia.
-// Compra antes do dia do fechamento: entra na fatura que fecha neste mês; no dia do fechamento
-// ou depois: na fatura seguinte. Se o vencimento é num dia menor que o fechamento
-// (fecha dia 25, vence dia 5), a fatura vence no mês seguinte ao do fechamento.
-// Ex.: fecha dia 3 e vence dia 10. Compra em 01/12 -> vence 10/12; compra em 05/12 -> vence 10/01.
-static DateTime VencimentoDaFatura(Cartao cartao, DateTime compra)
-{
-    var mesDoFechamento = new DateTime(compra.Year, compra.Month, 1);
-    if (compra.Day >= cartao.DiaFechamento)
-        mesDoFechamento = mesDoFechamento.AddMonths(1);
-    var mesDoVencimento = cartao.DiaVencimento > cartao.DiaFechamento ? mesDoFechamento : mesDoFechamento.AddMonths(1);
-    return mesDoVencimento.AddDays(cartao.DiaVencimento - 1);
-}
+// Em que dia vence a fatura de uma compra feita nesse dia (a regra está no Cartao).
+static DateTime VencimentoDaFatura(Cartao cartao, DateTime compra) => cartao.VencimentoDaFatura(compra);
 
 record Credenciais(string? Email, string? Senha);
 record TrocaDeSenha(string? SenhaAtual, string? NovaSenha);

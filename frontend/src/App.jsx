@@ -102,21 +102,29 @@ function App() {
       <header className="cabecalho">
         <div className="cabecalho-conteudo">
           <h1>💰 Controle Financeiro</h1>
-          <span className="usuario">{usuario.email}</span>
+          <span className="usuario">{usuario.visitante ? 'Visitante' : usuario.email}</span>
           <BotaoTema />
-          <button
-            onClick={() => {
-              setTrocandoSenha(!trocandoSenha)
-              setAviso('')
-            }}
-          >
-            Trocar senha
-          </button>
+          {!usuario.visitante && (
+            <button
+              onClick={() => {
+                setTrocandoSenha(!trocandoSenha)
+                setAviso('')
+              }}
+            >
+              Trocar senha
+            </button>
+          )}
           <button onClick={sair}>Sair</button>
         </div>
       </header>
 
       <main>
+        {usuario.visitante && (
+          <p className="aviso-demo nao-imprimir">
+            Você está no <strong>modo visitante</strong>: os dados são inventados, só você os vê, e esta conta é
+            apagada em 24 horas. Fique à vontade para mexer em tudo.
+          </p>
+        )}
         {trocandoSenha && (
           <TrocarSenha
             aoTrocar={() => {
@@ -212,7 +220,7 @@ function App() {
 
         {aba === 'Importar' && <Importar aoAlterar={aoAlterar} />}
 
-        {aba === 'Relatório' && <Relatorio email={usuario.email} atualizacao={atualizacao} />}
+        {aba === 'Relatório' && <Relatorio email={usuario.visitante ? 'Visitante (dados de exemplo)' : usuario.email} atualizacao={atualizacao} />}
       </main>
     </>
   )

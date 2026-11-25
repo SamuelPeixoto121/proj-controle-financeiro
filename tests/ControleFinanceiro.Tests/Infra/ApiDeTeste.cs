@@ -17,6 +17,9 @@ public class ApiDeTeste : WebApplicationFactory<Program>, IAsyncLifetime
     // Os testes fazem dezenas de cadastros por minuto; o limite real (5) tem um teste só dele.
     protected virtual int LimiteLogin => 1000;
 
+    // Liga o modo do site de demonstração (cadastro fechado, entrar como visitante).
+    protected virtual bool Demo => false;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // A mesma conexão dos User Secrets da API, trocando só o nome do banco.
@@ -32,6 +35,7 @@ public class ApiDeTeste : WebApplicationFactory<Program>, IAsyncLifetime
         {
             ["ConnectionStrings:DefaultConnection"] = conexaoDeTeste,
             ["LimiteLogin:PorMinuto"] = LimiteLogin.ToString(),
+            ["Demo:Ativo"] = Demo.ToString(),
         }));
     }
 
@@ -70,4 +74,10 @@ public class ApiDeTeste : WebApplicationFactory<Program>, IAsyncLifetime
 public class ApiComLimiteReal : ApiDeTeste
 {
     protected override int LimiteLogin => 5;
+}
+
+// A mesma API no modo do site de demonstração. Usa o banco já criado pela ApiDeTeste.
+public class ApiDemo : ApiDeTeste
+{
+    protected override bool Demo => true;
 }

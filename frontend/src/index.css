@@ -160,6 +160,20 @@ h2 {
   border-radius: 6px;
 }
 
+/* Site de demonstração: texto da tela de login e aviso do modo visitante */
+.login-demo p {
+  margin: 0;
+}
+
+
+.aviso-demo {
+  color: var(--principal-texto);
+  background: var(--principal-claro);
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 0 0 16px;
+}
+
 .receita {
   color: var(--receita);
 }

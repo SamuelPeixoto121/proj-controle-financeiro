@@ -72,3 +72,14 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  docker:
+    name: Montagem do site (Dockerfile)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Confere que a receita do site de demonstração (usada pelo Render) monta sem erro.
+      - name: Montar a imagem
+        run: docker build -t controle-financeiro-demo .

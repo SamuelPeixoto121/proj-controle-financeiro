@@ -1,4 +1,6 @@
-const API_URL = 'http://localhost:5083'
+// No PC (npm run dev), a API roda à parte na porta 5083.
+// No site publicado, a própria API entrega as telas: tudo no mesmo endereço.
+const API_URL = import.meta.env.DEV ? 'http://localhost:5083' : ''
 
 // Chama a API e devolve o JSON da resposta.
 // Se a API responder com erro, lança um Error com a mensagem dela.

@@ -6,6 +6,7 @@ Controle financeiro pessoal: cadastro de receitas e despesas, organização por 
 
 ## Funcionalidades
 
+- **Site de demonstração**: a versão publicada é uma vitrine com **dados inventados**. O botão "Entrar como visitante" cria uma conta temporária só daquela pessoa, já preenchida com um ano e pouco de receitas, despesas, cartão, contas, metas e transferências, apagada depois de 24 horas. Lá o cadastro fica fechado; o uso de verdade é no PC (veja [Site de demonstração](#site-de-demonstração))
 - **Login**: cada pessoa cria a própria conta (e-mail e senha) e só vê os próprios dados, e pode trocar a senha depois
 - Cadastrar, editar e excluir **transações** (receitas e despesas), com descrição, valor, data e categoria
 - **Contas a pagar (pago / pendente)**: cada transação fica paga/recebida ou pendente (um clique alterna). A visão geral lista as contas pendentes do mês e as atrasadas, com os totais a pagar e a receber
@@ -133,6 +134,19 @@ powershell -ExecutionPolicy Bypass -File scripts\restaurar.ps1
 - Cada execução é anotada em `backup.log`, na mesma pasta dos backups (inclusive os erros).
 - **Restaurar substitui os dados atuais** pelos do backup escolhido. Antes, o script faz um backup do estado atual, para dar para desfazer. De preferência, pare a API (Ctrl+C) antes de restaurar.
 
+## Site de demonstração
+
+O site publicado roda no modo demonstração (`Demo:Ativo = true`). No PC esse modo fica desligado e tudo funciona como sempre. No modo demonstração:
+
+- a tela de login mostra só o botão **"Entrar como visitante"**, e o cadastro responde 403;
+- cada visitante ganha uma conta própria com dados de exemplo (`backend/Data/DadosDeExemplo.cs`), e as contas de visitante com mais de 24 horas são apagadas quando entra um visitante novo (contas de verdade nunca são apagadas);
+- as tabelas do banco são criadas e atualizadas sozinhas quando a API liga;
+- a própria API entrega as telas do React (pasta `wwwroot`), então tudo fica num endereço só.
+
+**Onde fica (de graça):** o [Render](https://render.com) monta o site com o `Dockerfile` e roda a API e as telas; o banco é um [TiDB Cloud Starter](https://www.pingcap.com/tidb-cloud-starter/), compatível com MySQL. A conexão com o banco é configurada no painel do Render (`ConnectionStrings__DefaultConnection`) e nunca vai para o GitHub. Os dados reais continuam só no MySQL do PC.
+
+> No plano grátis, o site "dorme" depois de 15 minutos sem uso: a primeira abertura depois disso pode levar cerca de 1 minuto.
+
 ## Como rodar os testes
 
 O projeto tem testes automatizados para a API e para o front-end. Rode-os antes e depois de mudar o código: se algo quebrar, o teste mostra o que era esperado e o que veio.
@@ -165,14 +179,17 @@ Testam as funções que fazem contas e leem dados: leitura de extratos CSV (núm
 
 O login usa um cookie de sessão (`HttpOnly`), que o navegador envia sozinho em cada requisição.
 
-Para dificultar a descoberta de senhas por tentativa e erro, `/auth/cadastro`, `/auth/login` e `/auth/trocar-senha` aceitam juntas **até 5 tentativas por minuto de cada IP**. A partir da 6ª, respondem **429** até o minuto virar. O contador fica na memória e zera quando a API reinicia.
+Para dificultar a descoberta de senhas por tentativa e erro, `/auth/cadastro`, `/auth/login`, `/auth/trocar-senha` e `/auth/visitante` aceitam juntas **até 5 tentativas por minuto de cada IP**. A partir da 6ª, respondem **429** até o minuto virar. O contador fica na memória e zera quando a API reinicia.
 
 | Método | Rota | Descrição |
 |---|---|---|
 | POST | `/auth/cadastro` | Cria uma conta e já entra (`{ "email": "...", "senha": "..." }`, senha com 6+ caracteres) |
 | POST | `/auth/login` | Entra com e-mail e senha |
 | POST | `/auth/logout` | Sai |
-| GET | `/auth/eu` | Mostra quem está logado (401 se ninguém) |
+| GET | `/auth/eu` | Mostra quem está logado (401 se ninguém) e se é visitante |
+| GET | `/auth/modo` | `{ "demo": true/false }`: se é o site de demonstração |
+| POST | `/auth/visitante` | Só no site de demonstração: cria uma conta de visitante com dados de exemplo e já entra (404 fora dele) |
+| GET | `/saude` | Responde se a API está no ar |
 | POST | `/auth/trocar-senha` | Troca a senha de quem está logado (`{ "senhaAtual": "...", "novaSenha": "..." }`) |
 
 As rotas abaixo **exigem login** (sem login, respondem 401) e só enxergam os dados do usuário logado.
@@ -234,12 +251,13 @@ O campo `tipo` aceita `"Receita"` ou `"Despesa"`. O `valor` é sempre positivo: 
 ```
 proj-controle-financeiro/
 ├── backend/                 API em ASP.NET Core
-│   ├── Data/                AppDbContext (configuração do banco)
+│   ├── Data/                AppDbContext (configuração do banco) e DadosDeExemplo (visitante)
 │   ├── Migrations/          Migrations do Entity Framework
-│   ├── Models/              Usuario, Categoria, Transacao e TipoTransacao
+│   ├── Models/              Usuario, Categoria, Transacao, Conta, Cartao, Transferencia...
 │   └── Program.cs           Configuração da API, login e todas as rotas
 ├── tests/
 │   └── ControleFinanceiro.Tests/  Testes automatizados da API (xUnit)
+├── Dockerfile               Receita do site de demonstração (usada pelo Render)
 ├── scripts/                 Backup automático e restauração do banco (PowerShell)
 └── frontend/                Front-end em React (os testes ficam em src/*.test.js)
     └── src/
@@ -255,7 +273,7 @@ proj-controle-financeiro/
         ├── BarraEconomia.jsx Barra de progresso da meta (no mês e no ano)
         ├── Contas.jsx       Aba Contas: saldo de cada conta e transferências
         ├── Cartoes.jsx      Cartões de crédito e faturas (dentro da aba Contas)
-        ├── Login.jsx        Tela de entrar e criar conta
+        ├── Login.jsx        Tela de entrar e criar conta (no site de demonstração, "Entrar como visitante")
         ├── TrocarSenha.jsx  Formulário de troca de senha
         ├── BotaoTema.jsx    Botão de tema claro/escuro
         ├── ResumoMensal.jsx Resumo mês a mês (gráfico e tabela)

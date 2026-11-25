@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import BotaoTema from './BotaoTema.jsx'
 
@@ -9,6 +9,25 @@ function Login({ aoEntrar }) {
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
+  // Site de demonstração? (undefined = ainda perguntando à API)
+  const [demo, setDemo] = useState(undefined)
+
+  useEffect(() => {
+    api('/auth/modo')
+      .then((modo) => setDemo(modo.demo))
+      .catch(() => setDemo(false))
+  }, [])
+
+  async function entrarComoVisitante() {
+    setErro('')
+    setEnviando(true)
+    try {
+      aoEntrar(await api('/auth/visitante', { method: 'POST' }))
+    } catch (e) {
+      setErro(e.message)
+      setEnviando(false)
+    }
+  }
 
   async function enviar(evento) {
     evento.preventDefault()
@@ -29,12 +48,47 @@ function Login({ aoEntrar }) {
     setErro('')
   }
 
+  const topo = (
+    <div className="login-topo">
+      <h1>💰 Controle Financeiro</h1>
+      <BotaoTema />
+    </div>
+  )
+
+  if (demo === undefined)
+    return (
+      <main className="login card">
+        {topo}
+        <p className="carregando">Carregando...</p>
+      </main>
+    )
+
+  // Site de demonstração: sem cadastro, só o botão de visitante.
+  if (demo)
+    return (
+      <main className="login card">
+        {topo}
+        <div className="formulario-vertical login-demo">
+          <p>
+            Este é um <strong>site de demonstração</strong> de um app de controle financeiro pessoal
+            (React + ASP.NET Core + MySQL).
+          </p>
+          <p>
+            Entre como visitante para explorar com <strong>dados inventados</strong>: um ano e pouco de receitas e
+            despesas, cartão de crédito, contas, metas e relatórios. A sua conta de visitante é só sua e é apagada
+            em 24 horas.
+          </p>
+          {erro && <p className="erro">{erro}</p>}
+          <button type="button" className="principal" onClick={entrarComoVisitante} disabled={enviando}>
+            {enviando ? 'Preparando os dados...' : 'Entrar como visitante'}
+          </button>
+        </div>
+      </main>
+    )
+
   return (
     <main className="login card">
-      <div className="login-topo">
-        <h1>💰 Controle Financeiro</h1>
-        <BotaoTema />
-      </div>
+      {topo}
       <h2>{criandoConta ? 'Criar conta' : 'Entrar'}</h2>
 
       <form onSubmit={enviar} className="formulario-vertical">
