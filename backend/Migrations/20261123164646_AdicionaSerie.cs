@@ -16,7 +16,7 @@ namespace ControleFinanceiro.Migrations
                 table: "Transacoes",
                 type: "char(36)",
                 nullable: true,
-                collation: "ascii_general_ci");
+                collation: "utf8mb4_general_ci");
         }
 
         /// <inheritdoc />
